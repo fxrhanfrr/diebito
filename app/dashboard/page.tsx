@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useUser } from '@/hooks/useUser';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,18 +44,13 @@ const diabetesTypes = [
   'Other'
 ];
 
-const roles = [
-  { value: 'patient', label: 'Patient' },
-  { value: 'doctor', label: 'Doctor' },
-  { value: 'admin', label: 'Admin' }
-];
 
 export default function Dashboard() {
   const { user, loading, updateUserProfile } = useUser();
+  const router = useRouter();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editFormData, setEditFormData] = useState({
     name: '',
-    role: 'patient' as UserType['role'],
     age: '',
     weight: '',
     diabetesType: '' as string
@@ -72,6 +68,18 @@ export default function Dashboard() {
       loadDoctorData();
     }
   }, [user]);
+
+  // Handle role-based redirects for new users
+  useEffect(() => {
+    if (!loading && user) {
+      // Redirect based on user role for better UX
+      if (user.role === 'restaurant_owner') {
+        // Always redirect restaurant owners to their restaurant setup/management page
+        router.push('/restaurant-setup');
+        return;
+      }
+    }
+  }, [user, loading, router]);
 
   const loadDoctorData = async () => {
     if (!user) return;
@@ -157,7 +165,6 @@ export default function Dashboard() {
   const startEditingProfile = () => {
     setEditFormData({
       name: user.name,
-      role: user.role,
       age: user.age.toString(),
       weight: user.weight.toString(),
       diabetesType: user.diabetesType || ''
@@ -169,7 +176,6 @@ export default function Dashboard() {
     setIsEditingProfile(false);
     setEditFormData({
       name: '',
-      role: 'patient',
       age: '',
       weight: '',
       diabetesType: ''
@@ -180,7 +186,6 @@ export default function Dashboard() {
     try {
       await updateUserProfile({
         name: editFormData.name,
-        role: editFormData.role,
         age: parseInt(editFormData.age),
         weight: parseFloat(editFormData.weight),
         diabetesType: editFormData.diabetesType
@@ -610,36 +615,15 @@ export default function Dashboard() {
             </DialogHeader>
             
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-name">Full Name</Label>
-                  <Input
-                    id="edit-name"
-                    type="text"
-                    value={editFormData.name}
-                    onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter your full name"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="edit-role">Role</Label>
-                  <Select
-                    value={editFormData.role}
-                    onValueChange={(value) => setEditFormData(prev => ({ ...prev, role: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select your role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roles.map((role) => (
-                        <SelectItem key={role.value} value={role.value}>
-                          {role.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Full Name</Label>
+                <Input
+                  id="edit-name"
+                  type="text"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter your full name"
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -884,36 +868,15 @@ export default function Dashboard() {
           </DialogHeader>
           
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Full Name</Label>
-                <Input
-                  id="edit-name"
-                  type="text"
-                  value={editFormData.name}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter your full name"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-role">Role</Label>
-                <Select
-                  value={editFormData.role}
-                  onValueChange={(value) => setEditFormData(prev => ({ ...prev, role: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roles.map((role) => (
-                      <SelectItem key={role.value} value={role.value}>
-                        {role.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Full Name</Label>
+              <Input
+                id="edit-name"
+                type="text"
+                value={editFormData.name}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Enter your full name"
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

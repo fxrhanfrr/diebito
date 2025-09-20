@@ -8,12 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'admin' | 'doctor' | 'patient' | 'restaurant_owner'>('patient');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -28,6 +30,7 @@ export default function Login() {
 
     try {
       await signInWithEmail(email, password);
+      // Redirect to dashboard - the dashboard will handle role-based routing
       router.push('/dashboard');
     } catch (error: any) {
       setError(error.message || 'Login failed');
@@ -42,6 +45,7 @@ export default function Login() {
 
     try {
       await signInWithGoogle();
+      // Redirect to dashboard - the dashboard will handle role-based routing
       router.push('/dashboard');
     } catch (error: any) {
       setError(error.message || 'Google login failed');
@@ -51,20 +55,35 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50 p-4">
-      <Card className="w-full max-w-md">
+    <div className="form-container bg-gradient-primary">
+      <Card className="form-card">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-gray-900">Welcome Back</CardTitle>
-          <p className="text-gray-600">Sign in to your Diabeto Maestro account</p>
+          <CardTitle className="text-2xl font-bold text-primary">Welcome Back</CardTitle>
+          <p className="text-secondary">Sign in to your Diabeto Maestro account</p>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-content">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+            <div className="form-error">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleEmailLogin} className="space-y-4">
+          <form onSubmit={handleEmailLogin} className="space-content">
+            <div className="form-group">
+              <Label htmlFor="role" className="form-label">I am a</Label>
+              <Select value={role} onValueChange={(value: any) => setRole(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="patient">Patient</SelectItem>
+                  <SelectItem value="doctor">Doctor</SelectItem>
+                  <SelectItem value="restaurant_owner">Restaurant Owner</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">

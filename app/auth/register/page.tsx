@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 
@@ -19,6 +20,7 @@ export default function Register() {
     confirmPassword: '',
     age: '',
     weight: '',
+    role: 'patient' as 'admin' | 'doctor' | 'patient' | 'restaurant_owner',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -40,9 +42,11 @@ export default function Register() {
     try {
       await signUpWithEmail(formData.email, formData.password, {
         name: formData.name,
+        role: formData.role,
         age: formData.age ? parseInt(formData.age) : undefined,
         weight: formData.weight ? parseInt(formData.weight) : undefined,
       });
+      // Redirect to dashboard - the dashboard will handle role-based routing
       router.push('/dashboard');
     } catch (error: any) {
       setError(error.message || 'Registration failed');
@@ -69,21 +73,40 @@ export default function Register() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleRoleChange = (value: string) => {
+    setFormData({ ...formData, role: value as 'admin' | 'doctor' | 'patient' | 'restaurant_owner' });
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50 p-4">
-      <Card className="w-full max-w-md">
+    <div className="form-container bg-gradient-primary">
+      <Card className="form-card">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-gray-900">Create Account</CardTitle>
-          <p className="text-gray-600">Join Diabeto Maestro today</p>
+          <CardTitle className="text-2xl font-bold text-primary">Create Account</CardTitle>
+          <p className="text-secondary">Join Diabeto Maestro today</p>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-content">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+            <div className="form-error">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="role">I am a</Label>
+              <Select value={formData.role} onValueChange={handleRoleChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="patient">Patient</SelectItem>
+                  <SelectItem value="doctor">Doctor</SelectItem>
+                  <SelectItem value="restaurant_owner">Restaurant Owner</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <div className="relative">

@@ -93,6 +93,35 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
   return null;
 };
 
+export const getAllDoctors = async (): Promise<User[]> => {
+  const q = query(
+    collection(db, 'users'),
+    where('role', '==', 'doctor'),
+    where('degreeVerified', '==', true),
+    orderBy('name', 'asc')
+  );
+  const querySnapshot = await getDocs(q);
+  
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as User[];
+};
+
+export const getAllRestaurants = async (): Promise<Restaurant[]> => {
+  const q = query(
+    collection(db, 'restaurants'),
+    where('isActive', '==', true),
+    orderBy('name', 'asc')
+  );
+  const querySnapshot = await getDocs(q);
+  
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as Restaurant[];
+};
+
 export const updateUser = async (id: string, data: Partial<User>): Promise<void> => {
   return updateDocument('users', id, data);
 };

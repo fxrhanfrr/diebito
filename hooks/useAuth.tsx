@@ -9,12 +9,16 @@ interface UserProfile {
   id: string;
   email: string;
   name: string;
-  role: 'user' | 'admin' | 'doctor';
+  role: 'admin' | 'doctor' | 'patient' | 'restaurant_owner';
   profilePicture?: string;
   age?: number;
   weight?: number;
   sugarLevel?: number;
   preferences?: string[];
+  diabetesType?: string;
+  degreeUrl?: string;
+  degreeVerified?: boolean;
+  restaurantId?: string;
   createdAt: Date;
 }
 
@@ -69,7 +73,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await setDoc(doc(db, 'users', user.uid), {
       email: user.email,
       name: userData.name || '',
-      role: 'user',
+      role: userData.role || 'patient', // Default to patient if no role specified
       createdAt: new Date(),
       ...userData,
     });
@@ -82,7 +86,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await setDoc(doc(db, 'users', user.uid), {
         email: user.email,
         name: user.displayName || '',
-        role: 'user',
+        role: 'patient', // Default to patient for Google sign-in
         profilePicture: user.photoURL,
         createdAt: new Date(),
       });

@@ -17,18 +17,45 @@ export default function Navbar() {
   const { user, firebaseUser, signOut } = useUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const navigationItems = [
-    { href: '/dashboard', label: 'Dashboard' },
-    { href: '/diets', label: 'Diet Plans' },
-    { href: '/consultations', label: 'Consultations' },
-    { href: '/exercises', label: 'Exercise' },
-    { href: '/food-ordering', label: 'Food Orders' },
-    { href: '/meal-suggestions', label: 'Meal Suggestions' },
-  ];
+  const getNavigationItems = (role: string) => {
+    const baseItems = [
+      { href: '/dashboard', label: 'Dashboard' },
+    ];
 
-  const adminItems = [
-    { href: '/admin', label: 'Admin Panel' },
-  ];
+    switch (role) {
+      case 'admin':
+        return [
+          ...baseItems,
+          { href: '/admin', label: 'Admin Panel' },
+          { href: '/consultations', label: 'Manage Doctors' },
+          { href: '/food-ordering', label: 'Manage Restaurants' },
+        ];
+      case 'doctor':
+        return [
+          ...baseItems,
+          { href: '/consultations', label: 'My Consultations' },
+          { href: '/patients', label: 'My Patients' },
+        ];
+      case 'restaurant_owner':
+        return [
+          ...baseItems,
+          { href: '/restaurant-setup', label: 'My Restaurant' },
+          { href: '/food-ordering', label: 'Orders' },
+        ];
+      case 'patient':
+      default:
+        return [
+          ...baseItems,
+          { href: '/diets', label: 'Diet Plans' },
+          { href: '/consultations', label: 'Book Consultation' },
+          { href: '/exercises', label: 'Exercise' },
+          { href: '/food-ordering', label: 'Order Food' },
+          { href: '/meal-suggestions', label: 'Meal Suggestions' },
+        ];
+    }
+  };
+
+  const navigationItems = user ? getNavigationItems(user.role) : [];
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -40,10 +67,10 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white shadow-md border-b relative z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+      <div className="page-content px-4 sm:px-6 lg:px-8">
+        <div className="flex-between h-16">
           {/* Logo */}
-          <div className="flex items-center">
+          <div className="flex-start">
             <Link href="/" className="text-xl sm:text-2xl font-bold text-blue-600">
               Diabeto Maestro
             </Link>
@@ -57,22 +84,11 @@ export default function Navbar() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="text-gray-600 hover:text-blue-600 transition-colors"
+                    className="nav-link"
                   >
                     {item.label}
                   </Link>
                 ))}
-                {user.role === 'admin' && 
-                  adminItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="text-gray-600 hover:text-blue-600 transition-colors"
-                    >
-                      {item.label}
-                    </Link>
-                  ))
-                }
               </nav>
 
               {/* User Dropdown */}
@@ -105,6 +121,14 @@ export default function Navbar() {
                       <Link href="/admin" className="flex items-center">
                         <Shield className="mr-2 h-4 w-4" />
                         Admin Panel
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {user.role === 'restaurant_owner' && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/restaurant-setup" className="flex items-center">
+                        <Shield className="mr-2 h-4 w-4" />
+                        Restaurant Setup
                       </Link>
                     </DropdownMenuItem>
                   )}
@@ -149,6 +173,14 @@ export default function Navbar() {
                       <Link href="/admin" className="flex items-center">
                         <Shield className="mr-2 h-4 w-4" />
                         Admin Panel
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {user.role === 'restaurant_owner' && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/restaurant-setup" className="flex items-center">
+                        <Shield className="mr-2 h-4 w-4" />
+                        Restaurant Setup
                       </Link>
                     </DropdownMenuItem>
                   )}
@@ -198,39 +230,26 @@ export default function Navbar() {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md transition-colors"
+                      className="nav-mobile-link"
                       onClick={closeMobileMenu}
                     >
                       {item.label}
                     </Link>
                   ))}
                   
-                  {/* Admin Items */}
-                  {user.role === 'admin' && 
-                    adminItems.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md transition-colors"
-                        onClick={closeMobileMenu}
-                      >
-                        {item.label}
-                      </Link>
-                    ))
-                  }
                 </>
               ) : (
                 <>
                   <Link
                     href="/auth/login"
-                    className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md transition-colors"
+                    className="nav-mobile-link"
                     onClick={closeMobileMenu}
                   >
                     Login
                   </Link>
                   <Link
                     href="/auth/register"
-                    className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md transition-colors"
+                    className="nav-mobile-link"
                     onClick={closeMobileMenu}
                   >
                     Sign Up

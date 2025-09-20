@@ -8,7 +8,7 @@ import { UserProfileSetup } from './UserProfileSetup';
 interface AuthGuardProps {
   children: React.ReactNode;
   requireAuth?: boolean;
-  requiredRole?: 'admin' | 'doctor' | 'patient';
+  requiredRole?: 'admin' | 'doctor' | 'patient' | 'restaurant_owner';
 }
 
 export default function AuthGuard({ 
