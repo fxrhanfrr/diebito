@@ -136,24 +136,7 @@ export default function Consultations() {
   };
 
 
-  const appointments: Appointment[] = [
-    {
-      id: '1',
-      doctorName: 'Dr. Sarah Johnson',
-      date: '2024-01-20',
-      time: '10:00 AM',
-      type: 'video',
-      status: 'upcoming'
-    },
-    {
-      id: '2',
-      doctorName: 'Dr. Michael Chen',
-      date: '2024-01-18',
-      time: '2:30 PM',
-      type: 'phone',
-      status: 'completed'
-    }
-  ];
+  // Removed dummy appointments; appointments derive from Firestore consultations.
 
   const getStatusColor = (status: string) => {
     switch (status) {

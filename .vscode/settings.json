@@ -1,0 +1,20 @@
+{
+  // Disable CSS/SCSS/LESS validation so Tailwind's @tailwind and @apply don't show as errors
+  "css.validate": false,
+  "less.validate": false,
+  "scss.validate": false,
+
+  // Tailwind CSS IntelliSense recommendations
+  "editor.quickSuggestions": {
+    "strings": true
+  },
+  "tailwindCSS.emmetCompletions": true,
+  "tailwindCSS.includeLanguages": {
+    "plaintext": "html",
+    "javascript": "javascript",
+    "typescript": "typescript",
+    "javascriptreact": "javascript",
+    "typescriptreact": "typescript"
+  }
+}
+

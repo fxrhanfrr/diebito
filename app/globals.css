@@ -155,6 +155,83 @@
 
 /* Custom Utility Classes */
 @layer components {
+  /* Short-hand utility groups to simplify markup */
+  .btn-lg {
+    @apply px-8 py-4 text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+  .btn-blue {
+    @apply bg-blue-600 text-white hover:bg-blue-700;
+  }
+  .btn-white-blue {
+    @apply bg-white text-blue-600 hover:bg-gray-100;
+  }
+
+  .card-soft {
+    @apply border-0 shadow-md hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white to-gray-50;
+  }
+  .card-float {
+    @apply rounded-3xl p-8 shadow-2xl bg-white;
+  }
+
+  .chip {
+    @apply text-sm font-medium px-3 py-1 rounded-full;
+  }
+  .chip-active {
+    @apply bg-green-100 text-green-800;
+  }
+  .chip-pending {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+
+  .hero-title {
+    @apply text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight;
+  }
+  .hero-subtitle {
+    @apply text-lg md:text-xl text-gray-600 leading-relaxed;
+  }
+
+  .section {
+    @apply py-20;
+  }
+  .container-xl {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .img-cover {
+    @apply w-full object-cover;
+  }
+  .img-hero {
+    @apply w-full h-full object-cover transition-all duration-500 ease-in-out;
+  }
+  .img-feature {
+    @apply w-full h-80 object-cover transition-transform duration-500 group-hover:scale-105;
+  }
+
+  .pill {
+    @apply w-2 h-2 rounded-full transition-all duration-300;
+  }
+  .pill-active {
+    @apply bg-blue-600 w-6;
+  }
+  .pill-inactive {
+    @apply bg-gray-300;
+  }
+
+  .ctrl {
+    @apply p-2 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors duration-300;
+  }
+
+  .overlay-dark {
+    @apply absolute inset-0 bg-gradient-to-t from-black/60 to-transparent;
+  }
+  .overlay-dark-soft {
+    @apply absolute inset-0 bg-gradient-to-t from-black/30 to-transparent;
+  }
+
+  .feature-card {
+    @apply relative rounded-2xl overflow-hidden shadow-2xl;
+  }
+
   /* Layout Classes */
   .page-container {
     @apply min-h-screen p-6;
@@ -428,6 +505,13 @@
   
   .loading-dot {
     @apply w-2 h-2 bg-blue-600 rounded-full animate-bounce;
+  }
+
+  /* Slider/Carousel */
+  .testimonial-track {
+    display: flex;
+    transition: transform 500ms ease-in-out;
+    transform: translateX(var(--slide-offset, 0%));
   }
   
   /* Empty State Classes */

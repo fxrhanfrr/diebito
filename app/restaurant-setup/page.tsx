@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
-import { doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Restaurant, Food } from '@/lib/types';
 import { Building2, MapPin, Phone, Mail, Clock, DollarSign, Truck, Plus, Edit, Trash2, Utensils } from 'lucide-react';
@@ -91,22 +91,26 @@ export default function RestaurantSetup() {
     if (!user) return;
     
     try {
+      // Prefer deterministic lookup by owner UID (one restaurant per user)
+      const restaurantDoc = await getDoc(doc(db, 'restaurants', user.uid));
+      if (restaurantDoc.exists()) {
+        const restaurant = { id: restaurantDoc.id, ...restaurantDoc.data() } as Restaurant;
+        setExistingRestaurant(restaurant);
+        // Load menu items for this restaurant
+        await loadMenuItems();
+        return;
+      }
+
+      // Fallback: legacy query by ownerId
       const restaurantsQuery = query(
         collection(db, 'restaurants'),
         where('ownerId', '==', user.uid)
       );
       const querySnapshot = await getDocs(restaurantsQuery);
-      
       if (!querySnapshot.empty) {
-        const doc = querySnapshot.docs[0];
-        const restaurantData = doc.data() as Omit<Restaurant, 'id'>;
-        const restaurant = {
-          id: doc.id,
-          ...restaurantData
-        };
+        const first = querySnapshot.docs[0];
+        const restaurant = { id: first.id, ...first.data() } as Restaurant;
         setExistingRestaurant(restaurant);
-        
-        // Load menu items for this restaurant
         await loadMenuItems();
       }
     } catch (error) {
@@ -155,6 +159,14 @@ export default function RestaurantSetup() {
     setError('');
 
     try {
+      // Prevent duplicate creation (one restaurant per user)
+      const existingDoc = await getDoc(doc(db, 'restaurants', user.uid));
+      if (existingDoc.exists()) {
+        setError('You already have a restaurant linked to this account.');
+        setLoading(false);
+        return;
+      }
+
       // Create restaurant document
       const restaurantData: Omit<Restaurant, 'id'> = {
         name: formData.name,
@@ -163,20 +175,22 @@ export default function RestaurantSetup() {
         phone: formData.phone,
         email: formData.email,
         ownerId: user.uid,
-        isActive: false, // Admin needs to approve
+        isActive: true,
         specialties: formData.specialties,
         deliveryRadius: parseFloat(formData.deliveryRadius),
         deliveryFee: parseFloat(formData.deliveryFee),
         minimumOrder: parseFloat(formData.minimumOrder),
         operatingHours: formData.operatingHours,
-        createdAt: new Date() as any,
+        createdAt: serverTimestamp() as any,
       };
 
-      const restaurantRef = await addDoc(collection(db, 'restaurants'), restaurantData);
+      // Use deterministic doc id tied to owner (often permitted by rules)
+      const restaurantId = user.uid;
+      await setDoc(doc(db, 'restaurants', restaurantId), restaurantData, { merge: true });
       
       // Update user profile with restaurant ID
       await setDoc(doc(db, 'users', user.uid), {
-        restaurantId: restaurantRef.id,
+        restaurantId,
       }, { merge: true });
 
       setSuccess(true);
@@ -215,7 +229,10 @@ export default function RestaurantSetup() {
     try {
       const foodData = {
         ...newMenuItem,
-        restaurantId: existingRestaurant.id
+        restaurantId: existingRestaurant.id,
+        ownerId: user!.uid,
+        isActive: true,
+        createdAt: serverTimestamp() as any,
       };
 
       await addDoc(collection(db, 'foods'), foodData);
