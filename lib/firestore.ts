@@ -226,29 +226,33 @@ export const createConsultation = async (
 export const getConsultationsByUser = async (userId: string): Promise<Consultation[]> => {
   const q = query(
     collection(db, 'consultations'),
-    where('patientId', '==', userId),
-    orderBy('timeSlot', 'desc')
+    where('patientId', '==', userId)
   );
   const querySnapshot = await getDocs(q);
   
-  return querySnapshot.docs.map(doc => ({
+  const items = querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
   })) as Consultation[];
+  
+  // Sort client-side to avoid composite index requirement
+  return items.sort((a, b) => b.timeSlot.toMillis() - a.timeSlot.toMillis());
 };
 
 export const getConsultationsByDoctor = async (doctorId: string): Promise<Consultation[]> => {
   const q = query(
     collection(db, 'consultations'),
-    where('doctorId', '==', doctorId),
-    orderBy('timeSlot', 'desc')
+    where('doctorId', '==', doctorId)
   );
   const querySnapshot = await getDocs(q);
   
-  return querySnapshot.docs.map(doc => ({
+  const items = querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
   })) as Consultation[];
+  
+  // Sort client-side to avoid composite index requirement
+  return items.sort((a, b) => b.timeSlot.toMillis() - a.timeSlot.toMillis());
 };
 
 export const updateConsultationStatus = async (

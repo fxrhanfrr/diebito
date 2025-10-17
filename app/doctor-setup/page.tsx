@@ -88,6 +88,10 @@ export default function DoctorSetup() {
   const [success, setSuccess] = useState(false);
   const [existingProfile, setExistingProfile] = useState<DoctorProfile | null>(null);
   const [checkingProfile, setCheckingProfile] = useState(true);
+  const [editFee, setEditFee] = useState<string>('');
+  const [savingFee, setSavingFee] = useState(false);
+  const [editAvailability, setEditAvailability] = useState<any | null>(null);
+  const [savingAvailability, setSavingAvailability] = useState(false);
   
   const { user, profile } = useEnhancedAuth();
   const router = useRouter();
@@ -148,6 +152,8 @@ export default function DoctorSetup() {
       if (profileDoc.exists()) {
         const profileData = { id: profileDoc.id, ...profileDoc.data() } as DoctorProfile;
         setExistingProfile(profileData);
+        setEditFee((profileData.consultationFee ?? '').toString());
+        setEditAvailability(profileData.availability || null);
         // Load existing data into form
         setFormData({
           name: profileData.name || '',
@@ -372,8 +378,36 @@ export default function DoctorSetup() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label className="form-label">Consultation Fee</Label>
-                      <div className="text-lg font-semibold text-green-600">₹{existingProfile.consultationFee}</div>
+                      <Label className="form-label">Consultation Fee (₹)</Label>
+                      <div className="flex items-center gap-3">
+                        <Input
+                          type="number"
+                          value={editFee}
+                          onChange={(e) => setEditFee(e.target.value)}
+                          className="w-40"
+                        />
+                        <Button
+                          onClick={async () => {
+                            if (!user) return;
+                            setSavingFee(true);
+                            try {
+                              await updateDoc(doc(db, 'doctorProfiles', user.uid), {
+                                consultationFee: parseFloat(editFee || '0')
+                              });
+                              await updateDoc(doc(db, 'users', user.uid), {
+                                consultationFee: parseFloat(editFee || '0')
+                              });
+                              setExistingProfile({ ...existingProfile, consultationFee: parseFloat(editFee || '0') });
+                            } catch (err) {
+                              console.error('Failed updating fee', err);
+                            }
+                            setSavingFee(false);
+                          }}
+                          disabled={savingFee || !editFee}
+                        >
+                          {savingFee ? 'Saving...' : 'Save Fee'}
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label className="form-label">Rating</Label>
@@ -418,19 +452,70 @@ export default function DoctorSetup() {
                       <div key={day} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center gap-3">
                           <Checkbox
-                            checked={existingProfile.availability[day as keyof typeof existingProfile.availability].isAvailable}
-                            disabled
+                            checked={Boolean(editAvailability?.[day]?.isAvailable)}
+                            onCheckedChange={(checked) =>
+                              setEditAvailability((prev: any) => ({
+                                ...prev,
+                                [day]: {
+                                  ...(prev?.[day] || {}),
+                                  isAvailable: Boolean(checked)
+                                }
+                              }))
+                            }
                           />
                           <span className="capitalize font-medium">{day}</span>
                         </div>
-                        <div className="text-sm text-gray-600">
-                          {existingProfile.availability[day as keyof typeof existingProfile.availability].isAvailable
-                            ? `${existingProfile.availability[day as keyof typeof existingProfile.availability].start} - ${existingProfile.availability[day as keyof typeof existingProfile.availability].end}`
-                            : 'Not Available'
-                          }
-                        </div>
+                        {editAvailability?.[day]?.isAvailable ? (
+                          <div className="flex items-center gap-3">
+                            <Input
+                              type="time"
+                              value={editAvailability?.[day]?.start || '09:00'}
+                              onChange={(e) =>
+                                setEditAvailability((prev: any) => ({
+                                  ...prev,
+                                  [day]: { ...(prev?.[day] || {}), start: e.target.value }
+                                }))
+                              }
+                              className="w-32"
+                            />
+                            <span>to</span>
+                            <Input
+                              type="time"
+                              value={editAvailability?.[day]?.end || '17:00'}
+                              onChange={(e) =>
+                                setEditAvailability((prev: any) => ({
+                                  ...prev,
+                                  [day]: { ...(prev?.[day] || {}), end: e.target.value }
+                                }))
+                              }
+                              className="w-32"
+                            />
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-600">Not Available</div>
+                        )}
                       </div>
                     ))}
+                  </div>
+                  <div className="pt-4">
+                    <Button
+                      onClick={async () => {
+                        if (!user) return;
+                        setSavingAvailability(true);
+                        try {
+                          await updateDoc(doc(db, 'doctorProfiles', user.uid), {
+                            availability: editAvailability
+                          });
+                          setExistingProfile({ ...existingProfile, availability: editAvailability });
+                        } catch (err) {
+                          console.error('Failed updating availability', err);
+                        }
+                        setSavingAvailability(false);
+                      }}
+                      disabled={savingAvailability}
+                    >
+                      {savingAvailability ? 'Saving...' : 'Save Availability'}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
