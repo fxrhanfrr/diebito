@@ -13,6 +13,8 @@ import AuthGuard from '@/components/AuthGuard';
 import { useAuth } from '@/hooks/useAuth';
 import { Calendar, Clock, Video, User, Star, Phone, FileText, CheckCircle, XCircle, Search, Filter } from 'lucide-react';
 import { getAllDoctors, getAllDoctorProfiles, createConsultation, getConsultationsByUser, getConsultationsByDoctor } from '@/lib/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { User as UserType, Consultation } from '@/lib/types';
 
 interface Doctor {
@@ -51,6 +53,7 @@ export default function Consultations() {
   const [loading, setLoading] = useState(false);
   const [doctorConsultations, setDoctorConsultations] = useState<Consultation[]>([]);
   const [patientConsultations, setPatientConsultations] = useState<Consultation[]>([]);
+  const [doctorsMap, setDoctorsMap] = useState<Map<string, any>>(new Map());
 
   useEffect(() => {
     loadDoctors();
@@ -94,9 +97,35 @@ export default function Consultations() {
       } else if (profile.role === 'patient') {
         const consultations = await getConsultationsByUser(profile.id);
         setPatientConsultations(consultations);
+        
+        // Fetch doctor names for patient consultations
+        await fetchDoctorNames(consultations);
       }
     } catch (error) {
       console.error('Error loading consultations:', error);
+    }
+  };
+
+  const fetchDoctorNames = async (consultations: Consultation[]) => {
+    try {
+      // Collect all unique doctor IDs
+      const doctorIds = new Set<string>();
+      consultations.forEach(consultation => {
+        if (consultation.doctorId) doctorIds.add(consultation.doctorId);
+      });
+
+      // Fetch doctor data
+      if (doctorIds.size > 0) {
+        const doctorsQuery = query(collection(db, 'users'), where('role', '==', 'doctor'));
+        const doctorsSnapshot = await getDocs(doctorsQuery);
+        const newDoctorsMap = new Map<string, any>();
+        doctorsSnapshot.docs.forEach(doc => {
+          newDoctorsMap.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+        setDoctorsMap(newDoctorsMap);
+      }
+    } catch (error) {
+      console.error('Error fetching doctor names:', error);
     }
   };
 
@@ -556,7 +585,12 @@ export default function Consultations() {
                               <User className="h-6 w-6 text-blue-600" />
                             </div>
                             <div>
-                              <h3 className="font-semibold">Dr. {consultation.doctorId}</h3>
+                              <h3 className="font-semibold">
+                                Dr. {doctorsMap.get(consultation.doctorId)?.name || consultation.doctorId}
+                              </h3>
+                              <p className="text-sm text-gray-600">
+                                {doctorsMap.get(consultation.doctorId)?.specialty || 'General Medicine'}
+                              </p>
                               <div className="flex items-center gap-4 text-sm text-gray-600">
                                 <div className="flex items-center gap-1">
                                   <Calendar className="h-4 w-4" />

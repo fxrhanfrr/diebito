@@ -14,7 +14,46 @@ import { Clock, MapPin, Phone, Package, CheckCircle, XCircle } from 'lucide-reac
 export default function MyOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [foodsMap, setFoodsMap] = useState<Map<string, any>>(new Map());
+  const [restaurantsMap, setRestaurantsMap] = useState<Map<string, any>>(new Map());
   const { user } = useAuth();
+
+  const fetchRelatedData = async (orders: Order[]) => {
+    try {
+      // Collect all unique food IDs and restaurant IDs
+      const foodIds = new Set<string>();
+      const restaurantIds = new Set<string>();
+      
+      orders.forEach(order => {
+        order.items?.forEach(item => foodIds.add(item.foodId));
+        if (order.restaurantId) restaurantIds.add(order.restaurantId);
+      });
+
+      // Fetch foods data
+      if (foodIds.size > 0) {
+        const foodsQuery = query(collection(db, 'foods'));
+        const foodsSnapshot = await getDocs(foodsQuery);
+        const newFoodsMap = new Map<string, any>();
+        foodsSnapshot.docs.forEach(doc => {
+          newFoodsMap.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+        setFoodsMap(newFoodsMap);
+      }
+
+      // Fetch restaurants data
+      if (restaurantIds.size > 0) {
+        const restaurantsQuery = query(collection(db, 'restaurants'));
+        const restaurantsSnapshot = await getDocs(restaurantsQuery);
+        const newRestaurantsMap = new Map<string, any>();
+        restaurantsSnapshot.docs.forEach(doc => {
+          newRestaurantsMap.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+        setRestaurantsMap(newRestaurantsMap);
+      }
+    } catch (error) {
+      console.error('Error fetching related data:', error);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -44,6 +83,8 @@ export default function MyOrders() {
       });
       
       setOrders(ordersData);
+      // Fetch related data (foods and restaurants)
+      fetchRelatedData(ordersData);
       setLoading(false);
     }, (error) => {
       console.error('Error fetching orders:', error);
@@ -208,17 +249,36 @@ export default function MyOrders() {
                     <div>
                       <h4 className="font-semibold mb-2">Order Items:</h4>
                       <div className="space-y-2">
-                        {order.items?.map((item, index) => (
-                          <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                                <span className="text-sm font-medium">{item.qty}</span>
+                        {order.items?.map((item, index) => {
+                          const food = foodsMap.get(item.foodId);
+                          return (
+                            <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                                  <span className="text-sm font-medium">{item.qty}</span>
+                                </div>
+                                <div>
+                                  <span className="text-sm font-medium">
+                                    {food ? food.name : `Item ID: ${item.foodId}`}
+                                  </span>
+                                  {food && (
+                                    <div className="text-xs text-gray-500">
+                                      ₹{food.price} each
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <span className="text-sm">Item ID: {item.foodId}</span>
+                              <div className="text-right">
+                                <span className="text-sm font-medium">Qty: {item.qty}</span>
+                                {food && (
+                                  <div className="text-xs text-gray-500">
+                                    Total: ₹{(food.price * item.qty).toFixed(2)}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <span className="text-sm font-medium">Qty: {item.qty}</span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -244,6 +304,17 @@ export default function MyOrders() {
                           {order.contactPhone && ` • ${order.contactPhone}`}
                         </p>
                       </div>
+                    </div>
+
+                    {/* Restaurant Info */}
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2 text-sm">
+                        <Package className="h-4 w-4 text-gray-500" />
+                        <span className="font-medium">Restaurant:</span>
+                      </div>
+                      <p className="text-sm text-gray-600 ml-6">
+                        {restaurantsMap.get(order.restaurantId)?.name || `Restaurant ID: ${order.restaurantId}`}
+                      </p>
                     </div>
 
                     {/* Order Total */}

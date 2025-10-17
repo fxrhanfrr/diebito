@@ -19,7 +19,46 @@ export default function FoodOrdering() {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [foodsMap, setFoodsMap] = useState<Map<string, any>>(new Map());
+  const [usersMap, setUsersMap] = useState<Map<string, any>>(new Map());
   const { profile } = useAuth();
+
+  const fetchOrderRelatedData = async (orders: Order[]) => {
+    try {
+      // Collect all unique food IDs and user IDs
+      const foodIds = new Set<string>();
+      const userIds = new Set<string>();
+      
+      orders.forEach(order => {
+        order.items?.forEach(item => foodIds.add(item.foodId));
+        if (order.userId) userIds.add(order.userId);
+      });
+
+      // Fetch foods data
+      if (foodIds.size > 0) {
+        const foodsQuery = query(collection(db, 'foods'));
+        const foodsSnapshot = await getDocs(foodsQuery);
+        const newFoodsMap = new Map<string, any>();
+        foodsSnapshot.docs.forEach(doc => {
+          newFoodsMap.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+        setFoodsMap(newFoodsMap);
+      }
+
+      // Fetch users data
+      if (userIds.size > 0) {
+        const usersQuery = query(collection(db, 'users'));
+        const usersSnapshot = await getDocs(usersQuery);
+        const newUsersMap = new Map<string, any>();
+        usersSnapshot.docs.forEach(doc => {
+          newUsersMap.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+        setUsersMap(newUsersMap);
+      }
+    } catch (error) {
+      console.error('Error fetching order related data:', error);
+    }
+  };
 
   const handleOrderStatusUpdate = async (orderId: string, newStatus: string) => {
     try {
@@ -142,6 +181,8 @@ export default function FoodOrdering() {
         const ordersSnapshot = await getDocs(ordersQuery);
         const data = ordersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Order[];
         setOrders(data);
+        // Fetch related data (foods and users)
+        fetchOrderRelatedData(data);
       } catch (err) {
         console.error('Error loading orders:', err);
         setOrders([]);
@@ -205,17 +246,36 @@ export default function FoodOrdering() {
                       <div>
                         <h4 className="font-semibold mb-2">Order Items:</h4>
                         <div className="space-y-2">
-                          {order.items?.map((item, index) => (
-                            <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                                  <span className="text-sm font-medium">{item.qty}</span>
+                          {order.items?.map((item, index) => {
+                            const food = foodsMap.get(item.foodId);
+                            return (
+                              <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                                    <span className="text-sm font-medium">{item.qty}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-medium">
+                                      {food ? food.name : `Item ID: ${item.foodId}`}
+                                    </span>
+                                    {food && (
+                                      <div className="text-xs text-gray-500">
+                                        ₹{food.price} each
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                                <span className="text-sm">Item ID: {item.foodId}</span>
+                                <div className="text-right">
+                                  <span className="text-sm font-medium">Qty: {item.qty}</span>
+                                  {food && (
+                                    <div className="text-xs text-gray-500">
+                                      Total: ₹{(food.price * item.qty).toFixed(2)}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <span className="text-sm font-medium">Qty: {item.qty}</span>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -227,7 +287,7 @@ export default function FoodOrdering() {
                             <span className="font-medium">Customer:</span>
                           </div>
                           <p className="text-sm text-gray-600 ml-6">
-                            {order.contactName || 'Name not provided'}
+                            {usersMap.get(order.userId)?.name || order.contactName || 'Name not provided'}
                             {order.contactPhone && ` • ${order.contactPhone}`}
                           </p>
                         </div>
