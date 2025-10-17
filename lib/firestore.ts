@@ -111,6 +111,57 @@ export const getAllDoctors = async (): Promise<User[]> => {
   })) as User[];
 };
 
+export const getAllDoctorProfiles = async (): Promise<any[]> => {
+  try {
+    console.log('Querying doctorProfiles collection...');
+    const q = query(
+      collection(db, 'doctorProfiles'),
+      where('isVerified', '==', true)
+    );
+    const querySnapshot = await getDocs(q);
+    
+    console.log('Query snapshot size:', querySnapshot.size);
+    const results = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    console.log('Doctor profiles found:', results);
+    return results;
+  } catch (error) {
+    console.error('Error in getAllDoctorProfiles:', error);
+    throw error;
+  }
+};
+
+export const getAllDoctorProfilesForAdmin = async (): Promise<any[]> => {
+  try {
+    console.log('Querying all doctorProfiles for admin...');
+    const q = query(collection(db, 'doctorProfiles'));
+    const querySnapshot = await getDocs(q);
+    
+    console.log('Admin query snapshot size:', querySnapshot.size);
+    const results = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    console.log('All doctor profiles found:', results);
+    return results;
+  } catch (error) {
+    console.error('Error in getAllDoctorProfilesForAdmin:', error);
+    throw error;
+  }
+};
+
+export const getDoctorProfile = async (doctorId: string): Promise<any> => {
+  const docRef = doc(db, 'doctorProfiles', doctorId);
+  const docSnap = await getDoc(docRef);
+  
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() };
+  }
+  return null;
+};
+
 export const getAllRestaurants = async (): Promise<Restaurant[]> => {
   const restaurantsQuery = query(
     collection(db, 'restaurants'),

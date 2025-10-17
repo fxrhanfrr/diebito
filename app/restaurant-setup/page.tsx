@@ -315,7 +315,7 @@ export default function RestaurantSetup() {
       <div className="page-container bg-gradient-primary">
         <div className="page-content">
           <div className="page-header text-center">
-            <h1 className="page-title">My Restaurant</h1>
+            <h1 className="page-title">Restaurant Dashboard</h1>
             <p className="page-subtitle">Manage your restaurant details and menu</p>
           </div>
 
@@ -393,11 +393,11 @@ export default function RestaurantSetup() {
                 </div>
                 <div className="space-y-2">
                   <Label className="form-label">Delivery Fee</Label>
-                  <div className="text-gray-700">${existingRestaurant.deliveryFee}</div>
+                  <div className="text-gray-700">₹{existingRestaurant.deliveryFee}</div>
                 </div>
                 <div className="space-y-2">
                   <Label className="form-label">Minimum Order</Label>
-                  <div className="text-gray-700">${existingRestaurant.minimumOrder}</div>
+                  <div className="text-gray-700">₹{existingRestaurant.minimumOrder}</div>
                 </div>
               </div>
 
@@ -489,7 +489,7 @@ export default function RestaurantSetup() {
                             </div>
                             <div className="flex justify-between items-center mt-3 pt-3 border-t">
                               <span className="text-lg font-bold text-green-600">
-                                ${item.price}
+                                ₹{item.price}
                               </span>
                               <Button
                                 variant="outline"
@@ -547,7 +547,7 @@ export default function RestaurantSetup() {
                       </div>
 
                       <div>
-                        <Label htmlFor="price">Price ($)</Label>
+                        <Label htmlFor="price">Price (₹)</Label>
                         <Input
                           id="price"
                           type="number"
@@ -788,7 +788,7 @@ export default function RestaurantSetup() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="deliveryFee">Delivery Fee ($) *</Label>
+                  <Label htmlFor="deliveryFee">Delivery Fee (₹) *</Label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
@@ -806,7 +806,7 @@ export default function RestaurantSetup() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="minimumOrder">Minimum Order ($) *</Label>
+                  <Label htmlFor="minimumOrder">Minimum Order (₹) *</Label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input

@@ -128,6 +128,10 @@ service cloud.firestore {
       // Allow admins to read all consultations
       allow read: if isAdmin();
       
+      // Allow patients to create consultations (book appointments)
+      allow create: if isPatient() && 
+                       request.resource.data.patientId == request.auth.uid;
+      
       // Allow doctors to create consultations
       allow create: if isDoctor();
       
@@ -294,6 +298,54 @@ service cloud.firestore {
       allow create, read, update: if isAuthenticated();
       // Only admins can delete device sessions
       allow delete: if isAdmin();
+    }
+
+    // Doctor profiles collection rules
+    match /doctorProfiles/{doctorId} {
+      // Allow doctors to read their own profile
+      allow read: if isAuthenticated() && doctorId == request.auth.uid;
+      
+      // Allow patients to read verified doctor profiles
+      allow read: if isAuthenticated() && resource.data.isVerified == true;
+      
+      // Allow admins to read all doctor profiles
+      allow read: if isAdmin();
+      
+      // Allow doctors to create their own profile
+      allow create: if isDoctor() && doctorId == request.auth.uid;
+      
+      // Allow doctors to update their own profile
+      allow update: if isDoctor() && doctorId == request.auth.uid;
+      
+      // Allow admins to update doctor profiles (for verification)
+      allow update: if isAdmin();
+      
+      // Allow admins to delete doctor profiles
+      allow delete: if isAdmin();
+    }
+
+    // Menu items collection rules (for restaurant menus)
+    match /menuItems/{menuItemId} {
+      // Allow authenticated users to read active menu items
+      allow read: if isAuthenticated() && resource.data.isActive == true;
+      
+      // Allow restaurant owners to read their own menu items
+      allow read: if isAuthenticated() && 
+                     resource.data.restaurantId != null &&
+                     get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid;
+      
+      // Allow restaurant owners to create menu items for their restaurant
+      allow create: if isAuthenticated() && 
+                       request.resource.data.restaurantId != null &&
+                       get(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)).data.ownerId == request.auth.uid;
+      
+      // Allow restaurant owners to update their own menu items
+      allow update: if isAuthenticated() && 
+                       resource.data.restaurantId != null &&
+                       get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid;
+      
+      // Allow admins to read, update, and delete all menu items
+      allow read, update, delete: if isAdmin();
     }
   }
 }

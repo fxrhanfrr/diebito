@@ -190,7 +190,7 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
                         </div>
                         <p className="text-sm text-gray-600 mb-2">{item.description}</p>
                         <div className="flex items-center space-x-4 mb-2">
-                          <span className="font-semibold text-lg">${item.price}</span>
+                          <span className="font-semibold text-lg">₹{item.price}</span>
                           {item.category && (
                             <Badge variant="outline" className="text-xs">
                               {item.category}
@@ -231,7 +231,7 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
             <div className="sticky bottom-0 bg-white border-t p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="font-semibold">Total: ${getCartTotal().toFixed(2)}</span>
+                  <span className="font-semibold">Total: ₹{getCartTotal().toFixed(2)}</span>
                   <span className="text-sm text-gray-600 ml-2">
                     ({getCartItemCount()} items)
                   </span>

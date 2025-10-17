@@ -10,25 +10,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useUser } from '@/hooks/useUser';
-import { useAuth } from '@/hooks/useAuth';
+import { useEnhancedAuth } from '@/hooks/useEnhancedAuth';
 import AccountSwitcher from './AccountSwitcher';
 import { LogOut, User, Settings, Shield, Menu, X } from 'lucide-react';
 
 export default function Navbar() {
-  const { user, firebaseUser, signOut: userSignOut } = useUser();
-  const { logout: authLogout } = useAuth();
+  const { user, profile, signOut } = useEnhancedAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const handleSignOut = async () => {
-    try {
-      // Try both logout methods to ensure complete sign out
-      await userSignOut();
-      await authLogout();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
 
   const getNavigationItems = (role: string) => {
     const baseItems = [
@@ -46,6 +34,7 @@ export default function Navbar() {
       case 'doctor':
         return [
           ...baseItems,
+          { href: '/doctor-setup', label: 'My Profile' },
           { href: '/consultations', label: 'My Consultations' },
           { href: '/patients', label: 'My Patients' },
         ];
@@ -68,7 +57,7 @@ export default function Navbar() {
     }
   };
 
-  const navigationItems = user ? getNavigationItems(user.role) : [];
+  const navigationItems = profile ? getNavigationItems(profile.role) : [];
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -90,7 +79,7 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Navigation */}
-          {user && (
+          {profile && (
             <div className="hidden md:flex items-center space-x-4">
               <nav className="flex space-x-6">
                 {navigationItems.map((item) => (
@@ -112,9 +101,9 @@ export default function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={firebaseUser?.photoURL || ''} alt={user.name || ''} />
+                      <AvatarImage src={user?.photoURL || ''} alt={profile?.name || ''} />
                       <AvatarFallback>
-                        {user.name?.charAt(0) || firebaseUser?.email?.charAt(0) || 'U'}
+                        {profile?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -132,7 +121,7 @@ export default function Navbar() {
                       Settings
                     </Link>
                   </DropdownMenuItem>
-                  {user.role === 'admin' && (
+                  {profile?.role === 'admin' && (
                     <DropdownMenuItem asChild>
                       <Link href="/admin" className="flex items-center">
                         <Shield className="mr-2 h-4 w-4" />
@@ -140,7 +129,7 @@ export default function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  {user.role === 'restaurant_owner' && (
+                  {profile?.role === 'restaurant_owner' && (
                     <DropdownMenuItem asChild>
                       <Link href="/restaurant-setup" className="flex items-center">
                         <Shield className="mr-2 h-4 w-4" />
@@ -148,7 +137,7 @@ export default function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={handleSignOut}>
+                  <DropdownMenuItem onClick={signOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout
                   </DropdownMenuItem>
@@ -159,16 +148,16 @@ export default function Navbar() {
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center space-x-2">
-            {user && (
+            {profile && (
               <>
                 <AccountSwitcher />
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={firebaseUser?.photoURL || ''} alt={user.name || ''} />
+                      <AvatarImage src={user?.photoURL || ''} alt={profile?.name || ''} />
                       <AvatarFallback>
-                        {user.name?.charAt(0) || firebaseUser?.email?.charAt(0) || 'U'}
+                        {profile?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -186,7 +175,7 @@ export default function Navbar() {
                       Settings
                     </Link>
                   </DropdownMenuItem>
-                  {user.role === 'admin' && (
+                  {profile?.role === 'admin' && (
                     <DropdownMenuItem asChild>
                       <Link href="/admin" className="flex items-center">
                         <Shield className="mr-2 h-4 w-4" />
@@ -194,7 +183,7 @@ export default function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  {user.role === 'restaurant_owner' && (
+                  {profile?.role === 'restaurant_owner' && (
                     <DropdownMenuItem asChild>
                       <Link href="/restaurant-setup" className="flex items-center">
                         <Shield className="mr-2 h-4 w-4" />
@@ -202,7 +191,7 @@ export default function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={handleSignOut}>
+                  <DropdownMenuItem onClick={signOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout
                   </DropdownMenuItem>
@@ -226,7 +215,7 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Auth Buttons */}
-          {!user && (
+          {!profile && (
             <div className="hidden md:flex items-center space-x-4">
               <Link href="/auth/login">
                 <Button variant="outline">Login</Button>
@@ -242,7 +231,7 @@ export default function Navbar() {
         {isMobileMenuOpen && (
           <div className="md:hidden">
             <div className="px-2 pt-2 pb-3 space-y-1 bg-white border-t">
-              {user ? (
+              {profile ? (
                 <>
                   {/* Navigation Items */}
                   {navigationItems.map((item) => (

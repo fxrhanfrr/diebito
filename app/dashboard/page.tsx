@@ -85,6 +85,10 @@ export default function Dashboard() {
         router.push('/restaurant-setup');
         return;
       }
+      if (user.role === 'doctor') {
+        router.push('/doctor-setup');
+        return;
+      }
     }
   }, [user, loading, router]);
 

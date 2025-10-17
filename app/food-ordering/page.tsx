@@ -122,7 +122,7 @@ export default function FoodOrdering() {
                         <div className="space-y-1 text-sm">
                           <div className="font-semibold">Order #{order.id.slice(0, 8)}</div>
                           <div>Patient: {order.userId.slice(0, 8)}...</div>
-                          <div>Total: ${order.total?.toFixed?.(2) || order.total}</div>
+                          <div>Total: ₹{order.total?.toFixed?.(2) || order.total}</div>
                           <div className="text-gray-600">Items: {order.items?.length || 0}</div>
                         </div>
                         <div className="text-right">
@@ -188,7 +188,7 @@ export default function FoodOrdering() {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Truck className="h-4 w-4" />
-                        {restaurant.deliveryRadius}km radius • ${restaurant.deliveryFee} delivery
+                        {restaurant.deliveryRadius}km radius • ₹{restaurant.deliveryFee} delivery
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {restaurant.specialties.slice(0, 3).map((specialty) => (
@@ -204,7 +204,7 @@ export default function FoodOrdering() {
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="text-sm text-gray-600">
-                          Min order: ${restaurant.minimumOrder}
+                          Min order: ₹{restaurant.minimumOrder}
                         </div>
                         <RestaurantMenu restaurant={restaurant} />
                       </div>

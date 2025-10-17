@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import Link from 'next/link';
 import AuthGuard from '@/components/AuthGuard';
 import { useAuth } from '@/hooks/useAuth';
 import { Calendar, Clock, Video, User, Star, Phone, FileText, CheckCircle, XCircle, Search, Filter } from 'lucide-react';
-import { getAllDoctors, createConsultation, getConsultationsByUser, getConsultationsByDoctor } from '@/lib/firestore';
+import { getAllDoctors, getAllDoctorProfiles, createConsultation, getConsultationsByUser, getConsultationsByDoctor } from '@/lib/firestore';
 import { User as UserType, Consultation } from '@/lib/types';
 
 interface Doctor {
@@ -38,8 +38,8 @@ interface Appointment {
 export default function Consultations() {
   const [activeTab, setActiveTab] = useState('book');
   const { profile } = useAuth();
-  const [doctors, setDoctors] = useState<UserType[]>([]);
-  const [filteredDoctors, setFilteredDoctors] = useState<UserType[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [filteredDoctors, setFilteredDoctors] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState<UserType | null>(null);
   const [bookingData, setBookingData] = useState({
@@ -63,8 +63,22 @@ export default function Consultations() {
 
   const loadDoctors = async () => {
     try {
-      const doctorsData = await getAllDoctors();
+      console.log('Loading doctors...');
+      const doctorsData = await getAllDoctorProfiles();
+      console.log('Doctors loaded:', doctorsData);
       setDoctors(doctorsData);
+      
+      // If no doctors found, let's also try to get all doctor profiles without verification filter
+      if (doctorsData.length === 0) {
+        console.log('No verified doctors found, checking all doctor profiles...');
+        // This is just for debugging - we'll remove this later
+        try {
+          const allDoctors = await getAllDoctors();
+          console.log('All doctors (from users collection):', allDoctors);
+        } catch (err) {
+          console.log('Error getting all doctors:', err);
+        }
+      }
     } catch (error) {
       console.error('Error loading doctors:', error);
     }
@@ -92,7 +106,7 @@ export default function Consultations() {
     } else {
       const filtered = doctors.filter(doctor =>
         doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (doctor.diabetesType && doctor.diabetesType.toLowerCase().includes(searchTerm.toLowerCase()))
+        (doctor.specialty && doctor.specialty.toLowerCase().includes(searchTerm.toLowerCase()))
       );
       setFilteredDoctors(filtered);
     }
@@ -353,37 +367,81 @@ export default function Consultations() {
                 </div>
               </div>
 
-              <div className="grid-responsive">
-                {filteredDoctors.map((doctor) => (
+              {filteredDoctors.length === 0 ? (
+                <Card>
+                  <CardContent className="empty-state">
+                    <div className="empty-state-icon">👨‍⚕️</div>
+                    <h3 className="empty-state-title">No Doctors Available</h3>
+                    <p className="empty-state-description">
+                      {doctors.length === 0 
+                        ? "No verified doctors are currently available. Please check back later or contact support."
+                        : "No doctors match your search criteria. Try adjusting your search terms."
+                      }
+                    </p>
+                    {doctors.length === 0 && (
+                      <div className="mt-4 text-sm text-gray-600">
+                        <p>If you're a doctor, please complete your profile setup to start receiving consultation requests.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid-responsive">
+                  {filteredDoctors.map((doctor) => (
                   <Card key={doctor.id} className="card-hover">
                     <CardHeader className="text-center">
                       <div className="w-20 h-20 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-                        <User className="h-10 w-10 text-blue-600" />
+                        {doctor.profilePicture ? (
+                          <img 
+                            src={doctor.profilePicture} 
+                            alt={doctor.name}
+                            className="w-20 h-20 rounded-full object-cover"
+                          />
+                        ) : (
+                          <User className="h-10 w-10 text-blue-600" />
+                        )}
                       </div>
                       <CardTitle className="text-lg">{doctor.name}</CardTitle>
-                      <p className="text-blue-600 font-medium">Diabetes Specialist</p>
+                      <p className="text-blue-600 font-medium">{doctor.specialty}</p>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-1">
                           <Star className="h-4 w-4 text-yellow-500" />
-                          <span>4.8</span>
+                          <span>{doctor.rating.toFixed(1)}</span>
+                          <span className="text-gray-500">({doctor.totalConsultations} consultations)</span>
                         </div>
-                        <span>Verified Doctor</span>
+                        <Badge className="bg-green-100 text-green-800">Verified</Badge>
                       </div>
 
                       <div className="space-y-2">
-                        <p className="text-sm font-medium">Available Days:</p>
-                        <div className="flex gap-1">
-                          <Badge variant="outline" className="text-xs">Mon</Badge>
-                          <Badge variant="outline" className="text-xs">Wed</Badge>
-                          <Badge variant="outline" className="text-xs">Fri</Badge>
+                        <p className="text-sm text-gray-600 line-clamp-2">{doctor.bio}</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Experience:</p>
+                        <p className="text-sm text-gray-600">{doctor.experience} years</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Languages:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {doctor.languages.slice(0, 3).map((lang: string) => (
+                            <Badge key={lang} variant="outline" className="text-xs">
+                              {lang}
+                            </Badge>
+                          ))}
+                          {doctor.languages.length > 3 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{doctor.languages.length - 3} more
+                            </Badge>
+                          )}
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between">
                         <span className="text-lg font-bold text-green-600">
-                          $120
+                          ₹{doctor.consultationFee}
                         </span>
                         <Button 
                           size="sm"
@@ -395,7 +453,8 @@ export default function Consultations() {
                     </CardContent>
                   </Card>
                 ))}
-              </div>
+                </div>
+              )}
 
               {/* Booking Dialog */}
               {selectedDoctor && (
