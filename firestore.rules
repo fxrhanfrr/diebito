@@ -1,0 +1,299 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Helper function to check if user is doctor
+    function isDoctor() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'doctor';
+    }
+    
+    // Helper function to check if user is restaurant owner
+    function isRestaurantOwner() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'restaurant_owner';
+    }
+    
+    // Helper function to check if user is patient
+    function isPatient() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'patient';
+    }
+    
+    // Helper function to validate admin code
+    function isValidAdminCode(adminCode) {
+      return adminCode == '993322';
+    }
+    
+    // Users collection rules
+    match /users/{userId} {
+      // Allow users to read their own data
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Allow admins to read all user data
+      allow read: if isAdmin();
+      
+      // Allow users to create their own profile
+      allow create: if isAuthenticated() && 
+                       request.auth.uid == userId &&
+                       // Validate admin code if role is admin
+                       (request.resource.data.role != 'admin' || 
+                        (request.resource.data.role == 'admin' && isValidAdminCode(request.resource.data.adminCode)));
+      
+      // Allow profile updates. If role isn't being changed, allow. If being changed:
+      // - to admin: require valid adminCode
+      // - to non-admin: allow
+      allow update: if isAuthenticated() && request.auth.uid == userId && (
+        !request.resource.data.keys().hasAny(['role']) ||
+        (request.resource.data.role == 'admin' && isValidAdminCode(request.resource.data.adminCode)) ||
+        (request.resource.data.role != 'admin')
+      );
+      
+      // Allow admins to update any user data
+      allow update: if isAdmin();
+      
+      // Allow admins to delete users
+      allow delete: if isAdmin();
+    }
+    
+    // Restaurants collection rules
+    match /restaurants/{restaurantId} {
+      // Allow owners to read their own restaurant doc by ID (even if not created yet)
+      allow read: if isAuthenticated() && restaurantId == request.auth.uid;
+      // Allow authenticated users to read active restaurants
+      allow read: if isAuthenticated() && resource.data.isActive == true;
+      
+      // Allow admins to read all restaurants
+      allow read: if isAdmin();
+      
+      // Allow restaurant owners to read their own restaurant based on ownerId field
+      allow read: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      
+      // Allow restaurant owners to create their own restaurant
+      allow create: if isAuthenticated() && 
+                       request.resource.data.ownerId == request.auth.uid;
+      
+      // Allow restaurant owners to update their own restaurant
+      allow update: if isAuthenticated() && 
+                       resource.data.ownerId == request.auth.uid;
+      
+      // Allow admins to update any restaurant (for approval)
+      allow update: if isAdmin();
+      
+      // Allow admins to delete restaurants
+      allow delete: if isAdmin();
+    }
+    
+    // Foods collection rules
+    match /foods/{foodId} {
+      // Allow authenticated users to read active food items
+      allow read: if isAuthenticated() && resource.data.isActive == true;
+      
+      // Allow restaurant owners to read their own food items
+      allow read: if isAuthenticated() && 
+                     resource.data.restaurantId != null &&
+                     get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid;
+      
+      // Allow restaurant owners to create food items for their restaurant
+      allow create: if isAuthenticated() && 
+                       request.resource.data.restaurantId != null &&
+                       get(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)).data.ownerId == request.auth.uid;
+      
+      // Allow restaurant owners to update their own food items
+      allow update: if isAuthenticated() && 
+                       resource.data.restaurantId != null &&
+                       get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid;
+      
+      // Allow admins to read, update, and delete all food items
+      allow read, update, delete: if isAdmin();
+    }
+    
+    // Consultations collection rules
+    match /consultations/{consultationId} {
+      // Allow patients and doctors to read their own consultations
+      allow read: if isAuthenticated() && 
+                     (resource.data.patientId == request.auth.uid || 
+                      resource.data.doctorId == request.auth.uid);
+      
+      // Allow admins to read all consultations
+      allow read: if isAdmin();
+      
+      // Allow doctors to create consultations
+      allow create: if isDoctor();
+      
+      // Allow doctors to update their own consultations
+      allow update: if isDoctor() && 
+                       resource.data.doctorId == request.auth.uid;
+      
+      // Allow patients to update their own consultations (for booking)
+      allow update: if isPatient() && 
+                       resource.data.patientId == request.auth.uid;
+      
+      // Allow admins to update and delete consultations
+      allow update, delete: if isAdmin();
+    }
+    
+    // Orders collection rules
+    match /orders/{orderId} {
+      // Allow users to read their own orders
+      allow read: if isAuthenticated() && 
+                     resource.data.userId == request.auth.uid;
+      
+      // Allow restaurant owners to read orders for their restaurant
+      allow read: if isAuthenticated() && 
+                     resource.data.restaurantId != null &&
+                     get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid;
+      
+      // Allow admins to read all orders
+      allow read: if isAdmin();
+      
+      // Allow patients to create orders
+      allow create: if isPatient();
+      
+      // Allow restaurant owners to update orders for their restaurant
+      allow update: if isAuthenticated() && 
+                       resource.data.restaurantId != null &&
+                       get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid;
+      
+      // Allow admins to update and delete orders
+      allow update, delete: if isAdmin();
+    }
+    
+    // Diets collection rules
+    match /diets/{dietId} {
+      // Allow users to read their own diets
+      allow read: if isAuthenticated() && 
+                     resource.data.userId == request.auth.uid;
+      
+      // Allow doctors to read diets of their patients
+      allow read: if isDoctor();
+      
+      // Allow admins to read all diets
+      allow read: if isAdmin();
+      
+      // Allow patients to create their own diets
+      allow create: if isPatient() && 
+                       request.resource.data.userId == request.auth.uid;
+      
+      // Allow doctors to create diets for their patients
+      allow create: if isDoctor();
+      
+      // Allow users to update their own diets
+      allow update: if isAuthenticated() && 
+                       resource.data.userId == request.auth.uid;
+      
+      // Allow doctors to update diets of their patients
+      allow update: if isDoctor();
+      
+      // Allow admins to update and delete all diets
+      allow update, delete: if isAdmin();
+    }
+    
+    // Exercises collection rules
+    match /exercises/{exerciseId} {
+      // Allow authenticated users to read exercises
+      allow read: if isAuthenticated();
+      
+      // Allow admins to create, update, and delete exercises
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Progress collection rules
+    match /progress/{progressId} {
+      // Allow users to read their own progress
+      allow read: if isAuthenticated() && 
+                     resource.data.userId == request.auth.uid;
+      
+      // Allow doctors to read progress of their patients
+      allow read: if isDoctor();
+      
+      // Allow admins to read all progress
+      allow read: if isAdmin();
+      
+      // Allow users to create their own progress
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid;
+      
+      // Allow users to update their own progress
+      allow update: if isAuthenticated() && 
+                       resource.data.userId == request.auth.uid;
+      
+      // Allow admins to update and delete all progress
+      allow update, delete: if isAdmin();
+    }
+    
+    // Posts collection rules (for community features)
+    match /posts/{postId} {
+      // Allow authenticated users to read posts
+      allow read: if isAuthenticated();
+      
+      // Allow users to create posts
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid;
+      
+      // Allow users to update their own posts
+      allow update: if isAuthenticated() && 
+                       resource.data.userId == request.auth.uid;
+      
+      // Allow admins to update and delete all posts
+      allow update, delete: if isAdmin();
+    }
+    
+    // Comments collection rules
+    match /comments/{commentId} {
+      // Allow authenticated users to read comments
+      allow read: if isAuthenticated();
+      
+      // Allow users to create comments
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid;
+      
+      // Allow users to update their own comments
+      allow update: if isAuthenticated() && 
+                       resource.data.userId == request.auth.uid;
+      
+      // Allow admins to update and delete all comments
+      allow update, delete: if isAdmin();
+    }
+
+    // User sessions collection rules
+    match /user_sessions/{sessionId} {
+      // Allow an authenticated user to create a session for themselves
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+
+      // Allow reading only own sessions, or any if admin
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+
+      // Allow updates (e.g., lastActivity, isActive) only by the session owner or admin
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+
+      // Allow deletes by owner or admin
+      allow delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // Device sessions collection rules for multi-account support
+    match /device_sessions/{deviceId} {
+      // Allow any authenticated user to create/read/update device sessions
+      // This enables multi-account functionality while maintaining security
+      allow create, read, update: if isAuthenticated();
+      // Only admins can delete device sessions
+      allow delete: if isAdmin();
+    }
+  }
+}

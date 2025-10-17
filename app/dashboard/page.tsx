@@ -56,6 +56,8 @@ export default function Dashboard() {
     diabetesType: '' as string
   });
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string>('patient');
+  const [adminCode, setAdminCode] = useState<string>('');
   
   // Doctor-specific state
   const [consultations, setConsultations] = useState<Consultation[]>([]);
@@ -69,12 +71,17 @@ export default function Dashboard() {
     }
   }, [user]);
 
-  // Handle role-based redirects for new users
+  // Handle role assignment and role-based redirects
   useEffect(() => {
     if (!loading && user) {
+      // If no role yet, force role selection
+      if (!user.role) {
+        router.replace('/auth/select-role');
+        return;
+      }
+
       // Redirect based on user role for better UX
       if (user.role === 'restaurant_owner') {
-        // Always redirect restaurant owners to their restaurant setup/management page
         router.push('/restaurant-setup');
         return;
       }
@@ -140,6 +147,7 @@ export default function Dashboard() {
       case 'admin': return 'Administrator';
       case 'doctor': return 'Doctor';
       case 'patient': return 'Patient';
+      case 'restaurant_owner': return 'Restaurant Owner';
       default: return role;
     }
   };
@@ -169,6 +177,7 @@ export default function Dashboard() {
       weight: user.weight.toString(),
       diabetesType: user.diabetesType || ''
     });
+    setSelectedRole(user.role);
     setIsEditingProfile(true);
   };
 
@@ -184,12 +193,25 @@ export default function Dashboard() {
 
   const saveProfileChanges = async () => {
     try {
+      if (selectedRole === 'admin' && user.role !== 'admin') {
+        const configuredCode = process.env.NEXT_PUBLIC_ADMIN_SECURITY_CODE;
+        if (!configuredCode) {
+          alert('Admin security code is not configured.');
+          return;
+        }
+        if (adminCode.trim() !== configuredCode) {
+          alert('Invalid admin security code.');
+          return;
+        }
+      }
       await updateUserProfile({
         name: editFormData.name,
         age: parseInt(editFormData.age),
         weight: parseFloat(editFormData.weight),
-        diabetesType: editFormData.diabetesType
-      });
+        diabetesType: editFormData.diabetesType,
+        role: selectedRole as any,
+        ...(selectedRole === 'admin' && user.role !== 'admin' ? { adminCode: adminCode.trim() } : {})
+      } as any);
       setIsProfileDialogOpen(false);
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -868,6 +890,33 @@ export default function Dashboard() {
           </DialogHeader>
           
           <div className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="edit-role">Role</Label>
+              <Select value={selectedRole} onValueChange={setSelectedRole}>
+                <SelectTrigger id="edit-role">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="patient">Patient</SelectItem>
+                  <SelectItem value="doctor">Doctor</SelectItem>
+                  <SelectItem value="restaurant_owner">Restaurant Owner</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedRole === 'admin' && user.role !== 'admin' && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-adminCode">Admin Security Code</Label>
+                <Input
+                  id="edit-adminCode"
+                  type="password"
+                  value={adminCode}
+                  onChange={(e) => setAdminCode(e.target.value)}
+                  placeholder="Enter admin code"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="edit-name">Full Name</Label>
               <Input

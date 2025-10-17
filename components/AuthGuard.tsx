@@ -42,7 +42,20 @@ export default function AuthGuard({
   }
 
   if (requireAuth && !isAuthenticated) {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <div className="text-xl font-semibold">You're not signed in</div>
+          <p className="text-gray-600">Redirecting to login...</p>
+          <a
+            href="/auth/login"
+            className="inline-block px-4 py-2 rounded-md bg-black text-white hover:opacity-90"
+          >
+            Go to Login
+          </a>
+        </div>
+      </div>
+    );
   }
 
   // Show profile setup if user is authenticated but doesn't have a profile
@@ -51,7 +64,20 @@ export default function AuthGuard({
   }
 
   if (requiredRole && user?.role !== requiredRole) {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <div className="text-xl font-semibold">Access denied</div>
+          <p className="text-gray-600">You do not have permission to view this page.</p>
+          <a
+            href="/dashboard"
+            className="inline-block px-4 py-2 rounded-md bg-black text-white hover:opacity-90"
+          >
+            Go to Dashboard
+          </a>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;

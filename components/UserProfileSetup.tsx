@@ -21,6 +21,7 @@ const diabetesTypes = [
 const roles = [
   { value: 'patient', label: 'Patient' },
   { value: 'doctor', label: 'Doctor' },
+  { value: 'restaurant_owner', label: 'Restaurant Owner' },
   { value: 'admin', label: 'Admin' }
 ];
 
@@ -35,6 +36,7 @@ export const UserProfileSetup = () => {
     weight: '',
     diabetesType: ''
   });
+  const [adminCode, setAdminCode] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +44,19 @@ export const UserProfileSetup = () => {
 
     setLoading(true);
     try {
+      if (formData.role === 'admin') {
+        const configuredCode = process.env.NEXT_PUBLIC_ADMIN_SECURITY_CODE;
+        if (!configuredCode) {
+          alert('Admin security code is not configured.');
+          setLoading(false);
+          return;
+        }
+        if (adminCode.trim() !== configuredCode) {
+          alert('Invalid admin security code.');
+          setLoading(false);
+          return;
+        }
+      }
       const profileData: any = {
         name: formData.name,
         email: firebaseUser.email!,
@@ -53,6 +68,10 @@ export const UserProfileSetup = () => {
       // Only include diabetesType if it's a patient
       if (formData.role === 'patient' && formData.diabetesType) {
         profileData.diabetesType = formData.diabetesType;
+      }
+
+      if (formData.role === 'admin') {
+        profileData.adminCode = adminCode.trim();
       }
 
       await createUserProfile(profileData);
@@ -76,6 +95,11 @@ export const UserProfileSetup = () => {
     // Diabetes type is only required for patients
     if (formData.role === 'patient') {
       return baseValid && formData.diabetesType;
+    }
+    
+    // Admin requires security code
+    if (formData.role === 'admin') {
+      return baseValid && !!adminCode.trim();
     }
     
     return baseValid;
@@ -170,6 +194,20 @@ export const UserProfileSetup = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+
+            {formData.role === 'admin' && (
+              <div className="space-y-2">
+                <Label htmlFor="adminCode">Admin Security Code</Label>
+                <Input
+                  id="adminCode"
+                  type="password"
+                  value={adminCode}
+                  onChange={(e) => setAdminCode(e.target.value)}
+                  placeholder="Enter admin code"
+                  required
+                />
               </div>
             )}
 

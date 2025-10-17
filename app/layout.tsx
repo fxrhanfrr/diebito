@@ -1,31 +1,37 @@
-import './globals.css';
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import { AuthProvider } from '@/hooks/useAuth';
-import Navbar from '@/components/Navbar';
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
+import { Toaster } from '@/components/ui/toaster'
+import Navbar from '@/components/Navbar'
+import { AuthProvider } from '@/hooks/useAuth'
+import { EnhancedAuthProvider } from '@/hooks/useEnhancedAuth'
+import { MultiAccountProvider } from '@/hooks/useMultiAccount'
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Diabeto Maestro - Diabetes Care Management',
-  description: 'A comprehensive platform for diabetic patients to manage diet, exercise, consultations, and medicines',
-};
+  title: 'Diabeto - Diabetes Management Platform',
+  description: 'Comprehensive diabetes management platform with multi-account support',
+}
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          <div className="min-h-screen bg-gray-50">
-            <Navbar />
-            <main>{children}</main>
-          </div>
+          <EnhancedAuthProvider>
+            <MultiAccountProvider>
+              <Navbar />
+              {children}
+              <Toaster />
+            </MultiAccountProvider>
+          </EnhancedAuthProvider>
         </AuthProvider>
       </body>
     </html>
-  );
+  )
 }

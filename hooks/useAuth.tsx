@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await setDoc(doc(db, 'users', user.uid), {
       email: user.email,
       name: userData.name || '',
-      role: userData.role || 'patient', // Default to patient if no role specified
+      // Intentionally omit role so user chooses on first login
       createdAt: new Date(),
       ...userData,
     });

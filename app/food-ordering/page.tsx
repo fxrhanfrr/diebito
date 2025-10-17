@@ -9,13 +9,16 @@ import AuthGuard from '@/components/AuthGuard';
 import { useAuth } from '@/hooks/useAuth';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Restaurant } from '@/lib/types';
+import { Restaurant, Order } from '@/lib/types';
 import { Search, MapPin, Phone, Truck } from 'lucide-react';
+import RestaurantMenu from '@/components/RestaurantMenu';
 
 export default function FoodOrdering() {
   const [searchTerm, setSearchTerm] = useState('');
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
   const { profile } = useAuth();
 
   useEffect(() => {
@@ -54,77 +57,82 @@ export default function FoodOrdering() {
 
   // Show different content based on user role
   if (profile?.role === 'restaurant_owner') {
+    // Load orders for this restaurant owner
+    useEffect(() => {
+      const loadOwnerOrders = async () => {
+        try {
+          setOrdersLoading(true);
+          let restaurantId = profile?.restaurantId || '';
+          // Fallback: attempt to use owner UID as restaurant doc id
+          if (!restaurantId && profile?.id) {
+            restaurantId = profile.id;
+          }
+          if (!restaurantId) {
+            setOrders([]);
+            return;
+          }
+
+          const ordersQuery = query(
+            collection(db, 'orders'),
+            where('restaurantId', '==', restaurantId)
+          );
+          const ordersSnapshot = await getDocs(ordersQuery);
+          const data = ordersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Order[];
+          setOrders(data);
+        } catch (err) {
+          console.error('Error loading orders:', err);
+          setOrders([]);
+        } finally {
+          setOrdersLoading(false);
+        }
+      };
+
+      loadOwnerOrders();
+    }, [profile]);
+
     return (
       <AuthGuard>
         <div className="page-container bg-page">
           <div className="page-content">
             <div className="page-header">
-              <h1 className="page-title">Restaurant Management</h1>
-              <p className="page-subtitle">
-                Manage your restaurant and view orders
-              </p>
+              <h1 className="page-title">Orders for Your Restaurant</h1>
+              <p className="page-subtitle">View orders placed by patients for your restaurant</p>
             </div>
 
-            {loading ? (
+            {ordersLoading ? (
               <div className="empty-state">
                 <div className="loading-spinner mx-auto"></div>
-                <div className="text-muted text-lg">Loading restaurants...</div>
+                <div className="text-muted text-lg">Loading orders...</div>
               </div>
-            ) : restaurants.length > 0 ? (
+            ) : orders.length === 0 ? (
+              <Card>
+                <CardContent className="empty-state">
+                  <div className="empty-state-icon">🧾</div>
+                  <div className="empty-state-title">No orders yet</div>
+                  <p className="empty-state-description">Orders placed for your restaurant will appear here.</p>
+                  <Button onClick={() => window.location.href = '/restaurant-setup'}>Manage Restaurant</Button>
+                </CardContent>
+              </Card>
+            ) : (
               <div className="space-section">
-                {restaurants.map((restaurant) => (
-                  <Card key={restaurant.id}>
+                {orders.map((order) => (
+                  <Card key={order.id}>
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between">
-                        <div className="space-y-2">
-                          <h3 className="text-xl font-semibold">{restaurant.name}</h3>
-                          <p className="text-gray-600">{restaurant.description}</p>
-                          <div className="flex items-center gap-4 text-sm text-gray-600">
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-4 w-4" />
-                              {restaurant.address}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Phone className="h-4 w-4" />
-                              {restaurant.phone}
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {restaurant.specialties.map((specialty) => (
-                              <Badge key={specialty} variant="outline">
-                                {specialty}
-                              </Badge>
-                            ))}
-                          </div>
+                        <div className="space-y-1 text-sm">
+                          <div className="font-semibold">Order #{order.id.slice(0, 8)}</div>
+                          <div>Patient: {order.userId.slice(0, 8)}...</div>
+                          <div>Total: ${order.total?.toFixed?.(2) || order.total}</div>
+                          <div className="text-gray-600">Items: {order.items?.length || 0}</div>
                         </div>
-                        <div className="text-right space-y-2">
-                          <Badge className={restaurant.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                            {restaurant.isActive ? 'Active' : 'Pending Approval'}
-                          </Badge>
-                          <div className="text-sm text-gray-600">
-                            <div>Delivery Fee: ${restaurant.deliveryFee}</div>
-                            <div>Min Order: ${restaurant.minimumOrder}</div>
-                            <div>Radius: {restaurant.deliveryRadius}km</div>
-                          </div>
+                        <div className="text-right">
+                          <Badge>{order.status}</Badge>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
               </div>
-            ) : (
-              <Card>
-                <CardContent className="empty-state">
-                  <div className="empty-state-icon">🏪</div>
-                  <div className="empty-state-title">No restaurants found</div>
-                  <p className="empty-state-description">
-                    You haven't set up any restaurants yet. Create your first restaurant to start serving customers.
-                  </p>
-                  <Button onClick={() => window.location.href = '/restaurant-setup'}>
-                    Set Up Restaurant
-                  </Button>
-                </CardContent>
-              </Card>
             )}
           </div>
         </div>
@@ -198,9 +206,7 @@ export default function FoodOrdering() {
                         <div className="text-sm text-gray-600">
                           Min order: ${restaurant.minimumOrder}
                         </div>
-                        <Button size="sm">
-                          View Menu
-                        </Button>
+                        <RestaurantMenu restaurant={restaurant} />
                       </div>
                     </CardContent>
                   </Card>

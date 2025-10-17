@@ -28,7 +28,8 @@ import {
   Post,
   Comment,
   Exercise,
-  Food
+  Food,
+  Restaurant
 } from './types';
 
 // Generic CRUD operations
@@ -62,7 +63,7 @@ export const updateDocument = async <T extends DocumentData>(
   data: Partial<T>
 ): Promise<void> => {
   const docRef = doc(db, collectionName, id);
-  await updateDoc(docRef, data);
+  await updateDoc(docRef, data as any);
 };
 
 export const deleteDocument = async (
@@ -74,7 +75,9 @@ export const deleteDocument = async (
 };
 
 // User operations
-export const createUser = async (userData: Omit<User, 'id' | 'createdAt'>): Promise<string> => {
+export const createUser = async (
+  userData: Omit<User, 'id' | 'createdAt'> & { adminCode?: string }
+): Promise<string> => {
   return createDocument<User>('users', userData as any);
 };
 
@@ -109,21 +112,24 @@ export const getAllDoctors = async (): Promise<User[]> => {
 };
 
 export const getAllRestaurants = async (): Promise<Restaurant[]> => {
-  const q = query(
+  const restaurantsQuery = query(
     collection(db, 'restaurants'),
     where('isActive', '==', true),
     orderBy('name', 'asc')
   );
-  const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({
+  const querySnapshot = await getDocs(restaurantsQuery);
+
+  return querySnapshot.docs.map((doc) => ({
     id: doc.id,
     ...doc.data()
   })) as Restaurant[];
 };
 
-export const updateUser = async (id: string, data: Partial<User>): Promise<void> => {
-  return updateDocument('users', id, data);
+export const updateUser = async (
+  id: string,
+  data: Partial<User> & { adminCode?: string }
+): Promise<void> => {
+  return updateDocument('users', id, data as any);
 };
 
 // Diet operations
@@ -354,11 +360,11 @@ export const subscribeToCollection = <T>(
       q = query(q, where(field, operator, value));
     });
   }
-  
-  return onSnapshot(q, (snapshot) => {
-    const data = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
+
+  return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+    const data = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data()
     })) as T[];
     callback(data);
   });

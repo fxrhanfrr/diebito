@@ -11,11 +11,24 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useUser } from '@/hooks/useUser';
+import { useAuth } from '@/hooks/useAuth';
+import AccountSwitcher from './AccountSwitcher';
 import { LogOut, User, Settings, Shield, Menu, X } from 'lucide-react';
 
 export default function Navbar() {
-  const { user, firebaseUser, signOut } = useUser();
+  const { user, firebaseUser, signOut: userSignOut } = useUser();
+  const { logout: authLogout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    try {
+      // Try both logout methods to ensure complete sign out
+      await userSignOut();
+      await authLogout();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   const getNavigationItems = (role: string) => {
     const baseItems = [
@@ -91,6 +104,9 @@ export default function Navbar() {
                 ))}
               </nav>
 
+              {/* Account Switcher */}
+              <AccountSwitcher />
+
               {/* User Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -132,7 +148,7 @@ export default function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={signOut}>
+                  <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout
                   </DropdownMenuItem>
@@ -144,7 +160,9 @@ export default function Navbar() {
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center space-x-2">
             {user && (
-              <DropdownMenu>
+              <>
+                <AccountSwitcher />
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
@@ -184,12 +202,13 @@ export default function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={signOut}>
+                  <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </>
             )}
             
             <Button
