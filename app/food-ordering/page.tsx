@@ -24,6 +24,7 @@ export default function FoodOrdering() {
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
+        console.log('Fetching restaurants...');
         const restaurantsQuery = query(
           collection(db, 'restaurants'),
           where('isActive', '==', true)
@@ -33,6 +34,7 @@ export default function FoodOrdering() {
           id: doc.id,
           ...doc.data()
         })) as Restaurant[];
+        console.log('Fetched restaurants:', restaurantsData);
         setRestaurants(restaurantsData);
       } catch (error) {
         console.error('Error fetching restaurants:', error);
@@ -140,6 +142,23 @@ export default function FoodOrdering() {
     );
   }
 
+  // Debug logging
+  console.log('Food ordering page - profile:', profile, 'loading:', loading);
+
+  // Temporary bypass for testing - remove AuthGuard to test if that's the issue
+  if (!profile) {
+    return (
+      <div className="page-container bg-page">
+        <div className="page-content">
+          <div className="text-center py-8">
+            <h1 className="text-xl font-semibold">Loading user profile...</h1>
+            <p className="text-gray-600">Please wait while we load your profile.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AuthGuard>
       <div className="page-container bg-page">
@@ -149,6 +168,9 @@ export default function FoodOrdering() {
             <p className="page-subtitle">
               Order healthy, diabetes-approved meals from local restaurants
             </p>
+            {profile && (
+              <p className="text-sm text-gray-600">Welcome, {profile.name} ({profile.role})</p>
+            )}
           </div>
 
           {/* Search */}

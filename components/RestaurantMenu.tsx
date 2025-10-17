@@ -5,40 +5,77 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Plus, Minus, ShoppingCart, Clock, Star } from 'lucide-react';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Restaurant, MenuItem } from '@/lib/types';
+import { Restaurant, Food } from '@/lib/types';
+import { useAuth } from '@/hooks/useAuth';
 
 interface RestaurantMenuProps {
   restaurant: Restaurant;
 }
 
 export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const { user } = useAuth();
+  const [menuItems, setMenuItems] = useState<Food[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState<{[key: string]: number}>({});
   const [showCart, setShowCart] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [checkoutData, setCheckoutData] = useState({ name: '', phone: '', address: '' });
+
+  // Debug the restaurant object
+  console.log('RestaurantMenu received restaurant:', restaurant);
 
   useEffect(() => {
     const fetchMenuItems = async () => {
       try {
         setLoading(true);
-        const menuQuery = query(
-          collection(db, 'menuItems'),
-          where('restaurantId', '==', restaurant.id),
-          where('isActive', '==', true)
-        );
-        const querySnapshot = await getDocs(menuQuery);
-        const items = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as MenuItem[];
-        setMenuItems(items);
+        console.log('Fetching menu items for restaurant:', restaurant.id);
+        
+        // Try a simple query first without where clause to test permissions
+        console.log('Testing basic collection access...');
+        const basicQuery = collection(db, 'foods');
+        const basicSnapshot = await getDocs(basicQuery);
+        const allFoods = basicSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        console.log('All foods in database:', allFoods);
+        console.log('Looking for restaurant ID:', restaurant.id);
+        
+        // Filter items manually instead of using where clause
+        const matchingItems = allFoods.filter(item => item.restaurantId === restaurant.id);
+        console.log('Items matching restaurant ID:', matchingItems);
+        
+        // If no matches, try different ID formats
+        if (matchingItems.length === 0) {
+          const partialMatches = allFoods.filter(item => 
+            item.restaurantId && (
+              item.restaurantId.toString() === restaurant.id ||
+              restaurant.id.includes(item.restaurantId.toString()) ||
+              item.restaurantId.toString().includes(restaurant.id)
+            )
+          );
+          console.log('Partial matches with different ID formats:', partialMatches);
+        }
+        
+        const items = matchingItems as Food[];
+        console.log('Final filtered items:', items);
+        
+        // If no items found for this restaurant, show all items for debugging
+        if (items.length === 0) {
+          console.log('No items found for this restaurant, showing all items for debugging');
+          setMenuItems(allFoods as Food[]);
+        } else {
+          setMenuItems(items);
+        }
+        console.log('Final menu items set:', items.length > 0 ? items : allFoods);
       } catch (error) {
         console.error('Error fetching menu items:', error);
+        setMenuItems([]);
       } finally {
         setLoading(false);
       }
@@ -47,11 +84,40 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
     fetchMenuItems();
   }, [restaurant.id]);
 
-  const filteredItems = menuItems.filter(item =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Persist cart per restaurant
+  useEffect(() => {
+    const key = `cart:${restaurant.id}`;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) setCart(JSON.parse(saved));
+    } catch {}
+  }, [restaurant.id]);
+
+  useEffect(() => {
+    const key = `cart:${restaurant.id}`;
+    try {
+      localStorage.setItem(key, JSON.stringify(cart));
+    } catch {}
+  }, [cart, restaurant.id]);
+
+  const categories = Array.from(
+    new Set(
+      menuItems
+        .map((item) => (item.category || 'Uncategorized').trim())
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  const filteredItems = menuItems
+    .filter(item => {
+      const desc = (item as any).description || '';
+      return (
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        desc.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.category || '').toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    })
+    .filter(item => activeCategory === 'all' ? true : (item.category || 'Uncategorized') === activeCategory);
 
   const addToCart = (itemId: string) => {
     setCart(prev => ({
@@ -83,22 +149,53 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
     return Object.values(cart).reduce((total, quantity) => total + quantity, 0);
   };
 
-  const getDiabeticFriendlyBadge = (item: MenuItem) => {
-    if (item.isDiabeticFriendly) {
+  const getDiabeticFriendlyBadge = (item: any) => {
+    if ((item as any).isDiabeticFriendly) {
       return <Badge className="bg-green-100 text-green-800">Diabetic Friendly</Badge>;
     }
     return <Badge variant="outline" className="text-orange-600">Moderate Sugar</Badge>;
   };
 
-  const getNutritionInfo = (item: MenuItem) => {
+  const getNutritionInfo = (item: Food) => {
     return (
       <div className="text-xs text-gray-500 space-y-1">
-        {item.calories && <div>Calories: {item.calories}</div>}
-        {item.carbs && <div>Carbs: {item.carbs}g</div>}
-        {item.sugar && <div>Sugar: {item.sugar}g</div>}
-        {item.protein && <div>Protein: {item.protein}g</div>}
+        {item.nutritionPer100g?.calories !== undefined && <div>Calories: {item.nutritionPer100g.calories}</div>}
+        {item.nutritionPer100g?.carbs !== undefined && <div>Carbs: {item.nutritionPer100g.carbs}g</div>}
+        {item.nutritionPer100g?.sugar !== undefined && <div>Sugar: {item.nutritionPer100g.sugar}g</div>}
+        {item.nutritionPer100g?.protein !== undefined && <div>Protein: {item.nutritionPer100g.protein}g</div>}
       </div>
     );
+  };
+
+  const createOrder = async () => {
+    if (!user) {
+      alert('Please log in to place an order.');
+      return;
+    }
+    if (!checkoutData.name || !checkoutData.phone || !checkoutData.address) return;
+
+    const items = Object.entries(cart).map(([foodId, qty]) => ({ foodId, qty }));
+    const totalPrice = getCartTotal();
+
+    try {
+      await addDoc(collection(db, 'orders'), {
+        userId: user.uid,
+        restaurantId: restaurant.id,
+        items,
+        total: totalPrice,
+        status: 'pending',
+        deliveryInfo: checkoutData.address,
+        contactName: checkoutData.name,
+        contactPhone: checkoutData.phone,
+        createdAt: serverTimestamp()
+      });
+      setCart({});
+      setShowCheckout(false);
+      alert('Order placed successfully!');
+    } catch (e) {
+      console.error('Error creating order', e);
+      alert('Failed to place order.');
+    }
   };
 
   if (loading) {
@@ -111,6 +208,7 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
   }
 
   return (
+    <>
     <Dialog>
       <DialogTrigger asChild>
         <Button size="sm">
@@ -162,7 +260,7 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
               <div className="flex items-center space-x-4 text-sm text-gray-600">
                 <div className="flex items-center">
                   <Clock className="h-4 w-4 mr-1" />
-                  {restaurant.deliveryTime || '30-45 min'}
+                  Min ₹{restaurant.minimumOrder}
                 </div>
                 <div className="flex items-center">
                   <Star className="h-4 w-4 mr-1" />
@@ -172,58 +270,96 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
             </div>
           </div>
 
-          {/* Menu Items */}
+          {/* Category Tabs + Menu Items */}
           <div className="space-y-4">
-            {filteredItems.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No menu items found matching your search.
+            <Tabs value={activeCategory} onValueChange={setActiveCategory}>
+              <div className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b">
+                <TabsList className="w-full overflow-x-auto flex">
+                  <TabsTrigger value="all" className="whitespace-nowrap">All</TabsTrigger>
+                  {categories.map((cat) => (
+                    <TabsTrigger key={cat} value={cat} className="whitespace-nowrap">
+                      {cat}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
               </div>
-            ) : (
-              filteredItems.map((item) => (
-                <Card key={item.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <h4 className="font-semibold">{item.name}</h4>
-                          {getDiabeticFriendlyBadge(item)}
+
+              <TabsContent value={activeCategory} className="mt-4 space-y-4">
+                {filteredItems.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <div className="mb-4">
+                      <p>No menu items found matching your search.</p>
+                      <p className="text-sm mt-2">This restaurant hasn't added any menu items yet.</p>
+                    </div>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 max-w-md mx-auto">
+                      <h4 className="font-semibold text-yellow-800 mb-2">Sample Menu Items</h4>
+                      <p className="text-sm text-yellow-700 mb-3">Here are some sample items for testing:</p>
+                      <div className="space-y-2 text-left">
+                        <div className="flex justify-between">
+                          <span>Grilled Chicken Salad</span>
+                          <span className="font-semibold">₹150</span>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">{item.description}</p>
-                        <div className="flex items-center space-x-4 mb-2">
-                          <span className="font-semibold text-lg">₹{item.price}</span>
-                          {item.category && (
-                            <Badge variant="outline" className="text-xs">
-                              {item.category}
-                            </Badge>
-                          )}
+                        <div className="flex justify-between">
+                          <span>Quinoa Bowl</span>
+                          <span className="font-semibold">₹120</span>
                         </div>
-                        {getNutritionInfo(item)}
-                      </div>
-                      <div className="flex items-center space-x-2 ml-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeFromCart(item.id)}
-                          disabled={!cart[item.id]}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="w-8 text-center">
-                          {cart[item.id] || 0}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addToCart(item.id)}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
+                        <div className="flex justify-between">
+                          <span>Diabetic-Friendly Soup</span>
+                          <span className="font-semibold">₹80</span>
+                        </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
+                  </div>
+                ) : (
+                  filteredItems.map((item) => (
+                    <Card key={item.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <h4 className="font-semibold">{item.name}</h4>
+                              {getDiabeticFriendlyBadge(item)}
+                            </div>
+                            {(item as any).description && (
+                              <p className="text-sm text-gray-600 mb-2">{(item as any).description}</p>
+                            )}
+                            <div className="flex items-center space-x-4 mb-2">
+                              <span className="font-semibold text-lg">₹{item.price}</span>
+                              {(item.category || 'Uncategorized') && (
+                                <Badge variant="outline" className="text-xs">
+                                  {item.category || 'Uncategorized'}
+                                </Badge>
+                              )}
+                            </div>
+                            {getNutritionInfo(item)}
+                          </div>
+                          <div className="flex items-center space-x-2 ml-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeFromCart(item.id)}
+                              disabled={!cart[item.id]}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <span className="w-8 text-center">
+                              {cart[item.id] || 0}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addToCart(item.id)}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Cart Summary */}
@@ -236,7 +372,7 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
                     ({getCartItemCount()} items)
                   </span>
                 </div>
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => setShowCheckout(true)}>
                   <ShoppingCart className="h-4 w-4 mr-2" />
                   Proceed to Checkout
                 </Button>
@@ -246,5 +382,38 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
         </div>
       </DialogContent>
     </Dialog>
+    
+    /* Checkout Dialog */
+    {showCheckout && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <Card className="w-full max-w-lg mx-4">
+          <CardHeader>
+            <CardTitle>Checkout</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="mb-1 block">Full Name</Label>
+              <Input value={checkoutData.name} onChange={(e) => setCheckoutData({ ...checkoutData, name: e.target.value })} />
+            </div>
+            <div>
+              <Label className="mb-1 block">Phone</Label>
+              <Input value={checkoutData.phone} onChange={(e) => setCheckoutData({ ...checkoutData, phone: e.target.value })} />
+            </div>
+            <div>
+              <Label className="mb-1 block">Delivery Address</Label>
+              <Input value={checkoutData.address} onChange={(e) => setCheckoutData({ ...checkoutData, address: e.target.value })} />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">Total: ₹{getCartTotal().toFixed(2)}</span>
+              <div className="space-x-2">
+                <Button variant="outline" onClick={() => setShowCheckout(false)}>Cancel</Button>
+                <Button onClick={createOrder} disabled={!checkoutData.name || !checkoutData.phone || !checkoutData.address}>Place Order</Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )}
+    </>
   );
 }

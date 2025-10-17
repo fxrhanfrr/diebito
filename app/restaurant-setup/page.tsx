@@ -11,11 +11,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
-import { doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Restaurant, Food } from '@/lib/types';
-import { Building2, MapPin, Phone, Mail, Clock, DollarSign, Truck, Plus, Edit, Trash2, Utensils } from 'lucide-react';
+import { addSampleMenuItems } from '@/lib/sampleData';
+import { Building2, MapPin, Phone, Mail, Clock, DollarSign, Truck, Plus, Edit, Trash2, Utensils, Save, X, GripVertical, Tag } from 'lucide-react';
 
 export default function RestaurantSetup() {
   const [formData, setFormData] = useState({
@@ -44,9 +46,13 @@ export default function RestaurantSetup() {
   const [existingRestaurant, setExistingRestaurant] = useState<Restaurant | null>(null);
   const [checkingRestaurant, setCheckingRestaurant] = useState(true);
   const [menuItems, setMenuItems] = useState<Food[]>([]);
+  const [categories, setCategories] = useState<string[]>(['breakfast', 'lunch', 'dinner', 'snack']);
+  const [newCategory, setNewCategory] = useState('');
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [newMenuItem, setNewMenuItem] = useState({
     name: '',
-    category: 'breakfast' as 'breakfast' | 'lunch' | 'dinner' | 'snack',
+    category: 'breakfast' as string,
     nutritionPer100g: {
       calories: 0,
       carbs: 0,
@@ -55,9 +61,11 @@ export default function RestaurantSetup() {
       fat: 0
     },
     price: 0,
-    imageUrl: ''
+    imageUrl: '',
+    description: ''
   });
   const [isAddingMenuItem, setIsAddingMenuItem] = useState(false);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
   
   const { user, profile } = useAuth();
   const router = useRouter();
@@ -96,8 +104,8 @@ export default function RestaurantSetup() {
       if (restaurantDoc.exists()) {
         const restaurant = { id: restaurantDoc.id, ...restaurantDoc.data() } as Restaurant;
         setExistingRestaurant(restaurant);
-        // Load menu items for this restaurant
-        await loadMenuItems();
+        // Load menu items for this restaurant (avoid state race)
+        await loadMenuItems(restaurant.id);
         return;
       }
 
@@ -111,7 +119,7 @@ export default function RestaurantSetup() {
         const first = querySnapshot.docs[0];
         const restaurant = { id: first.id, ...first.data() } as Restaurant;
         setExistingRestaurant(restaurant);
-        await loadMenuItems();
+        await loadMenuItems(restaurant.id);
       }
     } catch (error) {
       console.error('Error checking existing restaurant:', error);
@@ -119,6 +127,13 @@ export default function RestaurantSetup() {
       setCheckingRestaurant(false);
     }
   };
+
+  // Ensure menu items load when restaurant state becomes available
+  useEffect(() => {
+    if (existingRestaurant?.id) {
+      loadMenuItems(existingRestaurant.id);
+    }
+  }, [existingRestaurant?.id]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -204,19 +219,22 @@ export default function RestaurantSetup() {
     setLoading(false);
   };
 
-  const loadMenuItems = async () => {
-    if (!existingRestaurant) return;
-    
+  const loadMenuItems = async (restaurantIdParam?: string) => {
+    const restaurantId = restaurantIdParam || existingRestaurant?.id;
+    if (!restaurantId) return;
+
     try {
+      console.log('Loading menu items for restaurant ID:', restaurantId);
       const q = query(
         collection(db, 'foods'),
-        where('restaurantId', '==', existingRestaurant.id)
+        where('restaurantId', '==', restaurantId)
       );
       const querySnapshot = await getDocs(q);
       const items = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Food[];
+      console.log('Loaded menu items:', items);
       setMenuItems(items);
     } catch (error) {
       console.error('Error loading menu items:', error);
@@ -235,7 +253,11 @@ export default function RestaurantSetup() {
         createdAt: serverTimestamp() as any,
       };
 
-      await addDoc(collection(db, 'foods'), foodData);
+      console.log('Creating menu item with data:', foodData);
+      console.log('Restaurant ID:', existingRestaurant.id);
+      
+      const docRef = await addDoc(collection(db, 'foods'), foodData);
+      console.log('Menu item created with ID:', docRef.id);
       
       // Reset form
       setNewMenuItem({
@@ -264,12 +286,101 @@ export default function RestaurantSetup() {
     if (!confirm('Are you sure you want to delete this menu item?')) return;
 
     try {
-      await updateDoc(doc(db, 'foods', itemId), {
-        isActive: false
-      });
+      await deleteDoc(doc(db, 'foods', itemId));
       await loadMenuItems();
     } catch (error) {
       console.error('Error deleting menu item:', error);
+    }
+  };
+
+  const handleEditMenuItem = (item: Food) => {
+    setEditingItem(item.id);
+    setNewMenuItem({
+      name: item.name,
+      category: item.category,
+      nutritionPer100g: item.nutritionPer100g,
+      price: item.price || 0,
+      imageUrl: item.imageUrl || '',
+      description: ''
+    });
+  };
+
+  const handleUpdateMenuItem = async () => {
+    if (!editingItem || !newMenuItem.name.trim()) return;
+
+    try {
+      await updateDoc(doc(db, 'foods', editingItem), {
+        name: newMenuItem.name,
+        category: newMenuItem.category,
+        nutritionPer100g: newMenuItem.nutritionPer100g,
+        price: newMenuItem.price,
+        imageUrl: newMenuItem.imageUrl,
+        updatedAt: serverTimestamp()
+      });
+      
+      setEditingItem(null);
+      setNewMenuItem({
+        name: '',
+        category: 'breakfast',
+        nutritionPer100g: { calories: 0, carbs: 0, protein: 0, sugar: 0, fat: 0 },
+        price: 0,
+        imageUrl: '',
+        description: ''
+      });
+      await loadMenuItems();
+    } catch (error) {
+      console.error('Error updating menu item:', error);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategory.trim() || categories.includes(newCategory.toLowerCase())) return;
+
+    try {
+      const category = newCategory.toLowerCase().trim();
+      setCategories(prev => [...prev, category]);
+      setNewCategory('');
+      setIsAddingCategory(false);
+    } catch (error) {
+      console.error('Error adding category:', error);
+    }
+  };
+
+  const handleDeleteCategory = (category: string) => {
+    if (categories.length <= 1) {
+      alert('You must have at least one category');
+      return;
+    }
+    
+    if (menuItems.some(item => item.category === category)) {
+      alert('Cannot delete category that has menu items. Please move or delete items first.');
+      return;
+    }
+    
+    setCategories(prev => prev.filter(cat => cat !== category));
+  };
+
+  const handleEditCategory = (oldCategory: string, newCategory: string) => {
+    if (newCategory.trim() && !categories.includes(newCategory.toLowerCase())) {
+      setCategories(prev => prev.map(cat => cat === oldCategory ? newCategory.toLowerCase() : cat));
+      setEditingCategory(null);
+    }
+  };
+
+  const handleAddSampleData = async () => {
+    if (!existingRestaurant) return;
+    
+    try {
+      const success = await addSampleMenuItems(existingRestaurant.id);
+      if (success) {
+        alert('Sample menu items added successfully!');
+        await loadMenuItems(existingRestaurant.id);
+      } else {
+        alert('Failed to add sample menu items.');
+      }
+    } catch (error) {
+      console.error('Error adding sample data:', error);
+      alert('Error adding sample menu items.');
     }
   };
 
@@ -435,6 +546,81 @@ export default function RestaurantSetup() {
             </TabsContent>
             
             <TabsContent value="menu" className="space-y-6">
+              {/* Category Management */}
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="flex items-center gap-2">
+                      <Tag className="h-5 w-5" />
+                      Menu Categories
+                    </CardTitle>
+                    <Button onClick={() => setIsAddingCategory(true)} size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Category
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map((category) => (
+                      <div key={category} className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2">
+                        {editingCategory === category ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={category}
+                              onChange={(e) => setNewCategory(e.target.value)}
+                              className="h-8 w-24"
+                              autoFocus
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => handleEditCategory(category, newCategory)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Save className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditingCategory(null)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="capitalize font-medium">{category}</span>
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingCategory(category);
+                                  setNewCategory(category);
+                                }}
+                                className="h-6 w-6 p-0"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDeleteCategory(category)}
+                                className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Menu Items */}
               <Card>
                 <CardHeader>
                   <div className="flex justify-between items-center">
@@ -442,10 +628,19 @@ export default function RestaurantSetup() {
                       <Utensils className="h-5 w-5" />
                       Menu Items
                     </CardTitle>
-                    <Button onClick={() => setIsAddingMenuItem(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Menu Item
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button onClick={() => setIsAddingMenuItem(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Menu Item
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={handleAddSampleData}
+                        className="text-sm"
+                      >
+                        Add Sample Data
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -460,59 +655,87 @@ export default function RestaurantSetup() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {menuItems.map((item) => (
-                        <Card key={item.id} className="relative">
-                          <CardContent className="p-4">
-                            <div className="flex justify-between items-start mb-2">
-                              <h3 className="font-semibold text-lg">{item.name}</h3>
-                              <Badge variant="outline" className="capitalize">
-                                {item.category}
-                              </Badge>
+                    <div className="space-y-4">
+                      {categories.map((category) => {
+                        const categoryItems = menuItems.filter(item => item.category === category);
+                        if (categoryItems.length === 0) return null;
+                        
+                        return (
+                          <div key={category} className="space-y-3">
+                            <h3 className="text-lg font-semibold text-gray-800 capitalize border-b pb-2">
+                              {category} ({categoryItems.length} items)
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {categoryItems.map((item) => (
+                                <Card key={item.id} className="relative group hover:shadow-lg transition-shadow">
+                                  <CardContent className="p-4">
+                                    <div className="flex justify-between items-start mb-2">
+                                      <h4 className="font-semibold text-lg">{item.name}</h4>
+                                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleEditMenuItem(item)}
+                                          className="h-8 w-8 p-0"
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleDeleteMenuItem(item.id)}
+                                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="space-y-2 text-sm text-gray-600 mb-3">
+                                      <div className="flex justify-between">
+                                        <span>Calories:</span>
+                                        <span>{item.nutritionPer100g.calories} cal/100g</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span>Carbs:</span>
+                                        <span>{item.nutritionPer100g.carbs}g</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span>Protein:</span>
+                                        <span>{item.nutritionPer100g.protein}g</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span>Sugar:</span>
+                                        <span>{item.nutritionPer100g.sugar}g</span>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="flex justify-between items-center pt-3 border-t">
+                                      <span className="text-lg font-bold text-green-600">
+                                        ₹{item.price}
+                                      </span>
+                                      <Badge variant="outline" className="capitalize">
+                                        {item.category}
+                                      </Badge>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              ))}
                             </div>
-                            <p className="text-sm text-gray-600 mb-3">
-                              {item.nutritionPer100g.calories} cal per 100g
-                            </p>
-                            <div className="space-y-1 text-sm">
-                              <div className="flex justify-between">
-                                <span>Carbs:</span>
-                                <span>{item.nutritionPer100g.carbs}g</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Protein:</span>
-                                <span>{item.nutritionPer100g.protein}g</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Sugar:</span>
-                                <span>{item.nutritionPer100g.sugar}g</span>
-                              </div>
-                            </div>
-                            <div className="flex justify-between items-center mt-3 pt-3 border-t">
-                              <span className="text-lg font-bold text-green-600">
-                                ₹{item.price}
-                              </span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDeleteMenuItem(item.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              {/* Add Menu Item Dialog */}
-              {isAddingMenuItem && (
+              {/* Add/Edit Menu Item Dialog */}
+              {(isAddingMenuItem || editingItem) && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                   <Card className="w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
                     <CardHeader>
-                      <CardTitle>Add Menu Item</CardTitle>
+                      <CardTitle>{editingItem ? 'Edit Menu Item' : 'Add Menu Item'}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -529,7 +752,7 @@ export default function RestaurantSetup() {
                           <Label htmlFor="category">Category</Label>
                           <Select
                             value={newMenuItem.category}
-                            onValueChange={(value: 'breakfast' | 'lunch' | 'dinner' | 'snack') => 
+                            onValueChange={(value: string) => 
                               setNewMenuItem(prev => ({ ...prev, category: value }))
                             }
                           >
@@ -537,13 +760,25 @@ export default function RestaurantSetup() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="breakfast">Breakfast</SelectItem>
-                              <SelectItem value="lunch">Lunch</SelectItem>
-                              <SelectItem value="dinner">Dinner</SelectItem>
-                              <SelectItem value="snack">Snack</SelectItem>
+                              {categories.map((category) => (
+                                <SelectItem key={category} value={category}>
+                                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="description">Description (Optional)</Label>
+                        <Textarea
+                          id="description"
+                          value={newMenuItem.description}
+                          onChange={(e) => setNewMenuItem(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Brief description of the dish..."
+                          rows={2}
+                        />
                       </div>
 
                       <div>
@@ -621,17 +856,70 @@ export default function RestaurantSetup() {
                       <div className="flex space-x-2">
                         <Button
                           variant="outline"
-                          onClick={() => setIsAddingMenuItem(false)}
+                          onClick={() => {
+                            setIsAddingMenuItem(false);
+                            setEditingItem(null);
+                            setNewMenuItem({
+                              name: '',
+                              category: 'breakfast',
+                              nutritionPer100g: { calories: 0, carbs: 0, protein: 0, sugar: 0, fat: 0 },
+                              price: 0,
+                              imageUrl: '',
+                              description: ''
+                            });
+                          }}
                           className="flex-1"
                         >
                           Cancel
                         </Button>
                         <Button
-                          onClick={handleAddMenuItem}
+                          onClick={editingItem ? handleUpdateMenuItem : handleAddMenuItem}
                           disabled={!newMenuItem.name.trim()}
                           className="flex-1"
                         >
-                          Add Menu Item
+                          {editingItem ? 'Update Menu Item' : 'Add Menu Item'}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Add Category Dialog */}
+              {isAddingCategory && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <Card className="w-full max-w-md mx-4">
+                    <CardHeader>
+                      <CardTitle>Add New Category</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label htmlFor="categoryName">Category Name</Label>
+                        <Input
+                          id="categoryName"
+                          value={newCategory}
+                          onChange={(e) => setNewCategory(e.target.value)}
+                          placeholder="e.g., appetizers, desserts"
+                          autoFocus
+                        />
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setIsAddingCategory(false);
+                            setNewCategory('');
+                          }}
+                          className="flex-1"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleAddCategory}
+                          disabled={!newCategory.trim() || categories.includes(newCategory.toLowerCase())}
+                          className="flex-1"
+                        >
+                          Add Category
                         </Button>
                       </div>
                     </CardContent>
