@@ -32,6 +32,22 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
   // Debug the restaurant object
   console.log('RestaurantMenu received restaurant:', restaurant);
 
+  // Prevent body scroll when checkout dialog is open
+  useEffect(() => {
+    if (showCheckout) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.userSelect = 'none';
+    } else {
+      document.body.style.overflow = 'unset';
+      document.body.style.userSelect = 'auto';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+      document.body.style.userSelect = 'auto';
+    };
+  }, [showCheckout]);
+
   useEffect(() => {
     const fetchMenuItems = async () => {
       try {
@@ -42,7 +58,7 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
         console.log('Testing basic collection access...');
         const basicQuery = collection(db, 'foods');
         const basicSnapshot = await getDocs(basicQuery);
-        const allFoods = basicSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        const allFoods = basicSnapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Food[];
         console.log('All foods in database:', allFoods);
         console.log('Looking for restaurant ID:', restaurant.id);
         
@@ -68,7 +84,7 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
         // If no items found for this restaurant, show all items for debugging
         if (items.length === 0) {
           console.log('No items found for this restaurant, showing all items for debugging');
-          setMenuItems(allFoods as Food[]);
+          setMenuItems(allFoods);
         } else {
           setMenuItems(items);
         }
@@ -383,35 +399,103 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
       </DialogContent>
     </Dialog>
     
-    /* Checkout Dialog */
+    {/* Checkout Dialog */}
     {showCheckout && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <Card className="w-full max-w-lg mx-4">
-          <CardHeader>
-            <CardTitle>Checkout</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label className="mb-1 block">Full Name</Label>
-              <Input value={checkoutData.name} onChange={(e) => setCheckoutData({ ...checkoutData, name: e.target.value })} />
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[10000]"
+          style={{ 
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 10000
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.target === e.currentTarget) {
+              setShowCheckout(false);
+            }
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+        <div 
+          className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{ 
+            position: 'relative',
+            zIndex: 10001
+          }}
+        >
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Checkout</h2>
+              <button 
+                onClick={() => setShowCheckout(false)}
+                className="text-gray-400 hover:text-gray-600 text-3xl leading-none p-1 hover:bg-gray-100 rounded-full"
+              >
+                ×
+              </button>
             </div>
-            <div>
-              <Label className="mb-1 block">Phone</Label>
-              <Input value={checkoutData.phone} onChange={(e) => setCheckoutData({ ...checkoutData, phone: e.target.value })} />
-            </div>
-            <div>
-              <Label className="mb-1 block">Delivery Address</Label>
-              <Input value={checkoutData.address} onChange={(e) => setCheckoutData({ ...checkoutData, address: e.target.value })} />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-semibold">Total: ₹{getCartTotal().toFixed(2)}</span>
-              <div className="space-x-2">
-                <Button variant="outline" onClick={() => setShowCheckout(false)}>Cancel</Button>
-                <Button onClick={createOrder} disabled={!checkoutData.name || !checkoutData.phone || !checkoutData.address}>Place Order</Button>
+            
+            <div className="space-y-6">
+              <div>
+                <Label className="mb-2 block font-semibold text-gray-700">Full Name</Label>
+                <Input 
+                  value={checkoutData.name} 
+                  onChange={(e) => setCheckoutData({ ...checkoutData, name: e.target.value })}
+                  placeholder="Enter your full name"
+                  className="w-full h-12 text-lg"
+                />
+              </div>
+              
+              <div>
+                <Label className="mb-2 block font-semibold text-gray-700">Phone Number</Label>
+                <Input 
+                  value={checkoutData.phone} 
+                  onChange={(e) => setCheckoutData({ ...checkoutData, phone: e.target.value })}
+                  placeholder="Enter your phone number"
+                  className="w-full h-12 text-lg"
+                />
+              </div>
+              
+              <div>
+                <Label className="mb-2 block font-semibold text-gray-700">Delivery Address</Label>
+                <Input 
+                  value={checkoutData.address} 
+                  onChange={(e) => setCheckoutData({ ...checkoutData, address: e.target.value })}
+                  placeholder="Enter your delivery address"
+                  className="w-full h-12 text-lg"
+                />
+              </div>
+              
+              <div className="border-t border-gray-200 pt-6">
+                <div className="flex items-center justify-between mb-6">
+                  <span className="text-xl font-bold text-gray-900">Total: ₹{getCartTotal().toFixed(2)}</span>
+                </div>
+                
+                <div className="flex gap-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowCheckout(false)}
+                    className="flex-1 h-12 text-lg font-semibold"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={createOrder} 
+                    disabled={!checkoutData.name || !checkoutData.phone || !checkoutData.address}
+                    className="flex-1 h-12 text-lg font-semibold bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
+                  >
+                    Place Order
+                  </Button>
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     )}
     </>

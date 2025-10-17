@@ -368,10 +368,31 @@ service cloud.firestore {
       // Allow admins to read all orders
       allow read: if isAdmin();
       
-      // Allow restaurant owners to update order status
+      // Allow restaurant owners to update order status and related fields
       allow update: if isAuthenticated() && 
                        resource.data.restaurantId != null &&
-                       get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid;
+                       get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid &&
+                       // Ensure core data doesn't change
+                       request.resource.data.userId == resource.data.userId &&
+                       request.resource.data.restaurantId == resource.data.restaurantId &&
+                       request.resource.data.items == resource.data.items &&
+                       request.resource.data.total == resource.data.total &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       // Validate status is one of the allowed values
+                       request.resource.data.status in ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'] &&
+                       // Allow additional fields like updatedAt, contactName, contactPhone
+                       request.resource.data.keys().hasAll(['id', 'userId', 'restaurantId', 'items', 'total', 'status', 'deliveryInfo', 'createdAt']);
+      
+      // Allow patients to update their own orders (for cancellation)
+      allow update: if isAuthenticated() && 
+                       resource.data.userId == request.auth.uid &&
+                       // Only allow status updates to 'cancelled' for patients
+                       request.resource.data.status == 'cancelled' &&
+                       // Ensure other fields don't change
+                       request.resource.data.restaurantId == resource.data.restaurantId &&
+                       request.resource.data.items == resource.data.items &&
+                       request.resource.data.total == resource.data.total &&
+                       request.resource.data.createdAt == resource.data.createdAt;
       
       // Allow admins to update and delete all orders
       allow update, delete: if isAdmin();

@@ -53,10 +53,13 @@ export interface FoodItem {
 export interface Order {
   id: string;
   userId: string;
+  restaurantId: string;
   items: FoodItem[];
-  totalPrice: number;
-  status: 'pending' | 'delivered';
+  total: number;
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
   deliveryInfo: string;
+  contactName?: string;
+  contactPhone?: string;
   createdAt: Timestamp;
 }
 

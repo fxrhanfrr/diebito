@@ -7,10 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import AuthGuard from '@/components/AuthGuard';
 import { useAuth } from '@/hooks/useAuth';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Restaurant, Order } from '@/lib/types';
-import { Search, MapPin, Phone, Truck } from 'lucide-react';
+import { Search, MapPin, Phone, Truck, CheckCircle, XCircle, Clock, Package, User } from 'lucide-react';
 import RestaurantMenu from '@/components/RestaurantMenu';
 
 export default function FoodOrdering() {
@@ -20,6 +20,67 @@ export default function FoodOrdering() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const { profile } = useAuth();
+
+  const handleOrderStatusUpdate = async (orderId: string, newStatus: string) => {
+    try {
+      await updateDoc(doc(db, 'orders', orderId), {
+        status: newStatus,
+        updatedAt: serverTimestamp()
+      });
+      
+      // Update local state
+      setOrders(prev => prev.map(order => 
+        order.id === orderId ? { ...order, status: newStatus as any } : order
+      ));
+      
+      console.log(`Order ${orderId} status updated to ${newStatus}`);
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      alert('Failed to update order status');
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'confirmed':
+        return 'bg-blue-100 text-blue-800';
+      case 'preparing':
+        return 'bg-orange-100 text-orange-800';
+      case 'ready':
+        return 'bg-purple-100 text-purple-800';
+      case 'delivered':
+        return 'bg-green-100 text-green-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'delivered':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'cancelled':
+        return <XCircle className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return 'Unknown date';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -57,41 +118,43 @@ export default function FoodOrdering() {
     return matchesSearch;
   });
 
+  // Load orders for restaurant owners
+  useEffect(() => {
+    const loadOwnerOrders = async () => {
+      if (profile?.role !== 'restaurant_owner') return;
+      
+      try {
+        setOrdersLoading(true);
+        let restaurantId = profile?.restaurantId || '';
+        // Fallback: attempt to use owner UID as restaurant doc id
+        if (!restaurantId && profile?.id) {
+          restaurantId = profile.id;
+        }
+        if (!restaurantId) {
+          setOrders([]);
+          return;
+        }
+
+        const ordersQuery = query(
+          collection(db, 'orders'),
+          where('restaurantId', '==', restaurantId)
+        );
+        const ordersSnapshot = await getDocs(ordersQuery);
+        const data = ordersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Order[];
+        setOrders(data);
+      } catch (err) {
+        console.error('Error loading orders:', err);
+        setOrders([]);
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+
+    loadOwnerOrders();
+  }, [profile]);
+
   // Show different content based on user role
   if (profile?.role === 'restaurant_owner') {
-    // Load orders for this restaurant owner
-    useEffect(() => {
-      const loadOwnerOrders = async () => {
-        try {
-          setOrdersLoading(true);
-          let restaurantId = profile?.restaurantId || '';
-          // Fallback: attempt to use owner UID as restaurant doc id
-          if (!restaurantId && profile?.id) {
-            restaurantId = profile.id;
-          }
-          if (!restaurantId) {
-            setOrders([]);
-            return;
-          }
-
-          const ordersQuery = query(
-            collection(db, 'orders'),
-            where('restaurantId', '==', restaurantId)
-          );
-          const ordersSnapshot = await getDocs(ordersQuery);
-          const data = ordersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Order[];
-          setOrders(data);
-        } catch (err) {
-          console.error('Error loading orders:', err);
-          setOrders([]);
-        } finally {
-          setOrdersLoading(false);
-        }
-      };
-
-      loadOwnerOrders();
-    }, [profile]);
-
     return (
       <AuthGuard>
         <div className="page-container bg-page">
@@ -116,20 +179,127 @@ export default function FoodOrdering() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-section">
+              <div className="space-y-6">
                 {orders.map((order) => (
-                  <Card key={order.id}>
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1 text-sm">
-                          <div className="font-semibold">Order #{order.id.slice(0, 8)}</div>
-                          <div>Patient: {order.userId.slice(0, 8)}...</div>
-                          <div>Total: ₹{order.total?.toFixed?.(2) || order.total}</div>
-                          <div className="text-gray-600">Items: {order.items?.length || 0}</div>
+                  <Card key={order.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <Package className="h-5 w-5 text-blue-600" />
+                          <div>
+                            <CardTitle className="text-lg">Order #{order.id.slice(0, 8)}</CardTitle>
+                            <p className="text-sm text-gray-600">
+                              Placed on {formatDate(order.createdAt)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <Badge>{order.status}</Badge>
+                        <Badge className={`${getStatusColor(order.status)} flex items-center space-x-1`}>
+                          {getStatusIcon(order.status)}
+                          <span className="capitalize">{order.status}</span>
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    
+                    <CardContent className="space-y-4">
+                      {/* Order Items */}
+                      <div>
+                        <h4 className="font-semibold mb-2">Order Items:</h4>
+                        <div className="space-y-2">
+                          {order.items?.map((item, index) => (
+                            <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                                  <span className="text-sm font-medium">{item.qty}</span>
+                                </div>
+                                <span className="text-sm">Item ID: {item.foodId}</span>
+                              </div>
+                              <span className="text-sm font-medium">Qty: {item.qty}</span>
+                            </div>
+                          ))}
                         </div>
+                      </div>
+
+                      {/* Customer Details */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2 text-sm">
+                            <User className="h-4 w-4 text-gray-500" />
+                            <span className="font-medium">Customer:</span>
+                          </div>
+                          <p className="text-sm text-gray-600 ml-6">
+                            {order.contactName || 'Name not provided'}
+                            {order.contactPhone && ` • ${order.contactPhone}`}
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2 text-sm">
+                            <MapPin className="h-4 w-4 text-gray-500" />
+                            <span className="font-medium">Delivery Address:</span>
+                          </div>
+                          <p className="text-sm text-gray-600 ml-6">
+                            {order.deliveryInfo || 'Address not provided'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Order Total */}
+                      <div className="border-t pt-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-lg font-semibold">Total Amount:</span>
+                          <span className="text-xl font-bold text-green-600">
+                            ₹{order.total?.toFixed(2) || order.total}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Order Actions */}
+                      <div className="flex space-x-2 pt-2">
+                        {order.status === 'pending' && (
+                          <>
+                            <Button 
+                              onClick={() => handleOrderStatusUpdate(order.id, 'confirmed')}
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Accept Order
+                            </Button>
+                            <Button 
+                              onClick={() => handleOrderStatusUpdate(order.id, 'cancelled')}
+                              variant="destructive"
+                            >
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Reject Order
+                            </Button>
+                          </>
+                        )}
+                        {order.status === 'confirmed' && (
+                          <Button 
+                            onClick={() => handleOrderStatusUpdate(order.id, 'preparing')}
+                            className="bg-orange-600 hover:bg-orange-700 text-white"
+                          >
+                            <Clock className="h-4 w-4 mr-2" />
+                            Start Preparing
+                          </Button>
+                        )}
+                        {order.status === 'preparing' && (
+                          <Button 
+                            onClick={() => handleOrderStatusUpdate(order.id, 'ready')}
+                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                          >
+                            <Package className="h-4 w-4 mr-2" />
+                            Mark Ready
+                          </Button>
+                        )}
+                        {order.status === 'ready' && (
+                          <Button 
+                            onClick={() => handleOrderStatusUpdate(order.id, 'delivered')}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Mark Delivered
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

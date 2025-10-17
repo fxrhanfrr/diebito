@@ -51,6 +51,7 @@ export default function Navbar() {
           { href: '/consultations', label: 'Book Consultation' },
           { href: '/exercises', label: 'Exercise' },
           { href: '/food-ordering', label: 'Order Food' },
+          { href: '/my-orders', label: 'My Orders' },
           { href: '/meal-suggestions', label: 'Meal Suggestions' },
         ];
     }
