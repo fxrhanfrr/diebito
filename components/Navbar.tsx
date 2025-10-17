@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useEnhancedAuth } from '@/hooks/useEnhancedAuth';
-import AccountSwitcher from './AccountSwitcher';
 import { LogOut, User, Settings, Shield, Menu, X } from 'lucide-react';
 
 export default function Navbar() {
@@ -93,8 +92,7 @@ export default function Navbar() {
                 ))}
               </nav>
 
-              {/* Account Switcher */}
-              <AccountSwitcher />
+              {/* Account Switcher removed */}
 
               {/* User Dropdown */}
               <DropdownMenu>
@@ -150,7 +148,6 @@ export default function Navbar() {
           <div className="md:hidden flex items-center space-x-2">
             {profile && (
               <>
-                <AccountSwitcher />
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">

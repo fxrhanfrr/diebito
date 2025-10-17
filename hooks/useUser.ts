@@ -37,6 +37,30 @@ export const useUser = () => {
     return () => unsubscribe();
   }, []);
 
+  // Listen for multi-account switches to override displayed profile
+  useEffect(() => {
+    const handler = async (e: any) => {
+      const userId = e?.detail?.userId;
+      if (!userId) return;
+      try {
+        const switchedUser = await getUser(userId);
+        if (switchedUser) {
+          setUser(switchedUser);
+        }
+      } catch (error) {
+        console.error('Error loading switched account user:', error);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('multiaccount:switch', handler as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('multiaccount:switch', handler as EventListener);
+      }
+    };
+  }, []);
+
   const createUserProfile = async (userData: Partial<Omit<User, 'id' | 'createdAt'>>) => {
     if (!firebaseUser) throw new Error('No authenticated user');
     

@@ -76,6 +76,7 @@ export default function AccountSwitcher() {
   };
 
   const handleSwitchAccount = async (accountId: string) => {
+    // Prompt for password reauth; in a real app we'd securely store tokens for fast switch
     const success = await switchAccount(accountId);
     if (success) {
       setShowAccountManager(false);
@@ -143,7 +144,7 @@ export default function AccountSwitcher() {
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{account.name}</div>
                 <div className="text-sm text-gray-500 truncate">{account.email}</div>
-                <Badge className={getRoleColor(account.role)} size="sm">
+                <Badge className={getRoleColor(account.role)}>
                   {getRoleLabel(account.role)}
                 </Badge>
               </div>
@@ -215,11 +216,11 @@ export default function AccountSwitcher() {
                           <div className="font-medium">{account.name}</div>
                           <div className="text-sm text-gray-500">{account.email}</div>
                           <div className="flex items-center space-x-2 mt-1">
-                            <Badge className={getRoleColor(account.role)} size="sm">
+                            <Badge className={getRoleColor(account.role)}>
                               {getRoleLabel(account.role)}
                             </Badge>
                             {account.id === currentAccount.id && (
-                              <Badge variant="outline" size="sm">
+                              <Badge variant="outline">
                                 Current
                               </Badge>
                             )}
@@ -276,6 +277,8 @@ export default function AccountSwitcher() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* No reauth dialog anymore */}
     </div>
   );
 }

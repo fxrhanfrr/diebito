@@ -164,6 +164,56 @@ export const EnhancedAuthProvider = ({ children }: { children: React.ReactNode }
     return () => unsubscribe();
   }, [loadUserProfile, handleError, session]);
 
+  // Listen for multi-account switches and reload Firestore profile accordingly
+  useEffect(() => {
+    const handler = async (e: any) => {
+      const detail = e?.detail;
+      // If the switched account belongs to a different Firebase userId, reload auth state
+      // Otherwise, just reload profile from Firestore
+      try {
+        if (detail?.userId && auth.currentUser?.uid !== detail.userId) {
+          // Soft reload to trigger onAuthStateChanged and pull the new user's profile
+          // This avoids full page refresh but ensures providers re-evaluate
+          const updatedProfileDoc = await getDoc(doc(db, 'users', detail.userId));
+          if (updatedProfileDoc.exists()) {
+            const data = updatedProfileDoc.data();
+            setProfile({
+              id: detail.userId,
+              email: data.email,
+              name: data.name || '',
+              role: data.role || 'patient',
+              age: data.age,
+              weight: data.weight,
+              diabetesType: data.diabetesType,
+              degreeUrl: data.degreeUrl,
+              degreeVerified: data.degreeVerified,
+              restaurantId: data.restaurantId,
+              createdAt: data.createdAt,
+              emailVerified: !!auth.currentUser?.emailVerified,
+              lastLogin: data.lastLogin?.toDate(),
+              activeSessions: data.activeSessions || []
+            } as any);
+          }
+        } else if (auth.currentUser) {
+          const updatedProfile = await loadUserProfile(auth.currentUser);
+          setProfile(updatedProfile);
+        }
+      } catch (error) {
+        console.error('Error refreshing profile after account switch:', error);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('multiaccount:switch', handler as EventListener);
+      window.addEventListener('multiaccount:update', handler as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('multiaccount:switch', handler as EventListener);
+        window.removeEventListener('multiaccount:update', handler as EventListener);
+      }
+    };
+  }, [loadUserProfile]);
+
   // Auth methods
   const signInWithEmail = useCallback(async (email: string, password: string) => {
     setLoading(true);

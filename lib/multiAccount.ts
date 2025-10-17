@@ -167,6 +167,11 @@ export class MultiAccountManager {
     this.currentSession!.lastActivity = new Date();
 
     await this.saveDeviceSession();
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(new CustomEvent('multiaccount:update', { detail: { type: 'add', accountId: accountProfile.id, userId: accountProfile.userId } }));
+      } catch {}
+    }
     return accountProfile;
   }
 
@@ -182,6 +187,11 @@ export class MultiAccountManager {
     this.currentSession.lastActivity = new Date();
 
     await this.saveDeviceSession();
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(new CustomEvent('multiaccount:switch', { detail: { accountId, userId: account.userId } }));
+      } catch {}
+    }
     return account;
   }
 
@@ -206,6 +216,11 @@ export class MultiAccountManager {
 
     this.currentSession.lastActivity = new Date();
     await this.saveDeviceSession();
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(new CustomEvent('multiaccount:update', { detail: { type: 'remove', accountId } }));
+      } catch {}
+    }
   }
 
   // Get current account
