@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useEnhancedAuth } from '@/hooks/useEnhancedAuth';
 import { Mail, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { sendEmailVerification } from "firebase/auth";
+import { send } from 'node:process';
+
 
 export default function VerifyEmailPage() {
   const { user, loading, error, clearError } = useEnhancedAuth();
@@ -54,7 +57,7 @@ export default function VerifyEmailPage() {
     clearError();
 
     try {
-      await user.sendEmailVerification();
+      await sendEmailVerification(user);
       setResendSuccess(true);
     } catch (error) {
       console.error('Error resending verification:', error);
