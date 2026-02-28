@@ -114,6 +114,11 @@ service cloud.firestore {
                        resource.data.restaurantId != null &&
                        get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid;
       
+      // Allow restaurant owners to delete their own food items
+      allow delete: if isAuthenticated() && 
+                       resource.data.restaurantId != null &&
+                       get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid;
+      
       // Allow admins to read, update, and delete all food items
       allow read, update, delete: if isAdmin();
     }
@@ -147,31 +152,7 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
     
-    // Orders collection rules
-    match /orders/{orderId} {
-      // Allow users to read their own orders
-      allow read: if isAuthenticated() && 
-                     resource.data.userId == request.auth.uid;
-      
-      // Allow restaurant owners to read orders for their restaurant
-      allow read: if isAuthenticated() && 
-                     resource.data.restaurantId != null &&
-                     get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid;
-      
-      // Allow admins to read all orders
-      allow read: if isAdmin();
-      
-      // Allow patients to create orders
-      allow create: if isPatient();
-      
-      // Allow restaurant owners to update orders for their restaurant
-      allow update: if isAuthenticated() && 
-                       resource.data.restaurantId != null &&
-                       get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid;
-      
-      // Allow admins to update and delete orders
-      allow update, delete: if isAdmin();
-    }
+
     
     // Diets collection rules
     match /diets/{dietId} {
@@ -293,11 +274,9 @@ service cloud.firestore {
 
     // Device sessions collection rules for multi-account support
     match /device_sessions/{deviceId} {
-      // Allow any authenticated user to create/read/update device sessions
-      // This enables multi-account functionality while maintaining security
-      allow create, read, update: if isAuthenticated();
-      // Only admins can delete device sessions
-      allow delete: if isAdmin();
+      // Allow anyone to read/write device sessions for multi-account tracking
+      // This is necessary because it happens before auth state is fully resolved
+      allow read, write: if true;
     }
 
     // Doctor profiles collection rules
@@ -398,29 +377,7 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    // Foods collection rules (for restaurant menu items)
-    match /foods/{foodId} {
-      // Allow all authenticated users to read food items (for patients to view menus)
-      allow read: if isAuthenticated();
-      
-      // Allow restaurant owners to create food items for their restaurant
-      allow create: if isAuthenticated() && 
-                       request.resource.data.restaurantId != null &&
-                       get(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)).data.ownerId == request.auth.uid;
-      
-      // Allow restaurant owners to update their own food items
-      allow update: if isAuthenticated() && 
-                       resource.data.restaurantId != null &&
-                       get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid;
-      
-      // Allow restaurant owners to delete their own food items
-      allow delete: if isAuthenticated() && 
-                       resource.data.restaurantId != null &&
-                       get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid;
-      
-      // Allow admins to read, update, and delete all food items
-      allow read, update, delete: if isAdmin();
-    }
+
   }
 }
 

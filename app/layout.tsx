@@ -12,6 +12,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Diabeto - Diabetes Management Platform',
   description: 'Comprehensive diabetes management platform with multi-account support',
+  manifest: '/manifest.json',
 }
 
 export default function RootLayout({

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
-import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -25,7 +25,8 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+  const [adminCode, setAdminCode] = useState('');
+
   const { signUpWithEmail, signInWithGoogle } = useAuth();
   const router = useRouter();
 
@@ -34,6 +35,19 @@ export default function Register() {
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
+    }
+
+    // Validate admin security code
+    if (formData.role === 'admin') {
+      const configuredCode = process.env.NEXT_PUBLIC_ADMIN_SECURITY_CODE;
+      if (!configuredCode) {
+        setError('Admin registration is not configured. Contact the system administrator.');
+        return;
+      }
+      if (adminCode.trim() !== configuredCode.trim()) {
+        setError('Invalid admin security code. Please check and try again.');
+        return;
+      }
     }
 
     setLoading(true);
@@ -51,7 +65,7 @@ export default function Register() {
     } catch (error: any) {
       setError(error.message || 'Registration failed');
     }
-    
+
     setLoading(false);
   };
 
@@ -65,7 +79,7 @@ export default function Register() {
     } catch (error: any) {
       setError(error.message || 'Google signup failed');
     }
-    
+
     setLoading(false);
   };
 
@@ -106,6 +120,29 @@ export default function Register() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Admin Security Code — only shown when Admin role is selected */}
+            {formData.role === 'admin' && (
+              <div className="space-y-2">
+                <Label htmlFor="adminCode" className="flex items-center gap-1 text-amber-700">
+                  <ShieldCheck className="h-4 w-4" />
+                  Admin Security Code
+                </Label>
+                <div className="relative">
+                  <ShieldCheck className="absolute left-3 top-3 h-4 w-4 text-amber-500" />
+                  <Input
+                    id="adminCode"
+                    type="password"
+                    value={adminCode}
+                    onChange={(e) => setAdminCode(e.target.value)}
+                    className="pl-10 border-amber-300 focus:border-amber-500"
+                    placeholder="Enter admin security code"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-amber-600">Contact your system administrator for the admin security code.</p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>

@@ -15,12 +15,12 @@ import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
-import { 
-  Calendar, 
-  Utensils, 
-  Activity, 
-  ShoppingCart, 
-  MessageSquare, 
+import {
+  Calendar,
+  Utensils,
+  Activity,
+  ShoppingCart,
+  MessageSquare,
   User,
   TrendingUp,
   Clock,
@@ -31,9 +31,12 @@ import {
   Stethoscope,
   FileText,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Droplets,
+  Plus,
+  Trash2
 } from 'lucide-react';
-import { getConsultationsByDoctor, getDiets, getUserProgress } from '@/lib/firestore';
+import { getConsultationsByDoctor, getDiets, getUserProgress, getUser } from '@/lib/firestore';
 import { Consultation, Diet, Progress as ProgressType, User as UserType } from '@/lib/types';
 
 const diabetesTypes = [
@@ -44,6 +47,12 @@ const diabetesTypes = [
   'Other'
 ];
 
+
+interface BloodSugarReading {
+  value: number;
+  time: string;
+  label: 'fasting' | 'post-meal' | 'bedtime' | 'random';
+}
 
 export default function Dashboard() {
   const { user, loading, updateUserProfile } = useUser();
@@ -58,12 +67,53 @@ export default function Dashboard() {
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>('patient');
   const [adminCode, setAdminCode] = useState<string>('');
-  
+
   // Doctor-specific state
   const [consultations, setConsultations] = useState<Consultation[]>([]);
+  const [patientNames, setPatientNames] = useState<{ [key: string]: string }>({});
   const [allDiets, setAllDiets] = useState<Diet[]>([]);
   const [patientProgress, setPatientProgress] = useState<{ [key: string]: ProgressType[] }>({});
   const [loadingDoctorData, setLoadingDoctorData] = useState(false);
+
+  // Blood sugar tracking (patients only) - stored in localStorage
+  const [bloodSugarReadings, setBloodSugarReadings] = useState<BloodSugarReading[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('bloodSugarReadings');
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
+  const [newSugarValue, setNewSugarValue] = useState('');
+  const [newSugarLabel, setNewSugarLabel] = useState<BloodSugarReading['label']>('fasting');
+
+  const addBloodSugarReading = () => {
+    const val = parseFloat(newSugarValue);
+    if (isNaN(val) || val <= 0) return;
+    const reading: BloodSugarReading = { value: val, time: new Date().toLocaleString(), label: newSugarLabel };
+    const updated = [reading, ...bloodSugarReadings].slice(0, 10);
+    setBloodSugarReadings(updated);
+    localStorage.setItem('bloodSugarReadings', JSON.stringify(updated));
+    setNewSugarValue('');
+  };
+
+  const removeBloodSugarReading = (index: number) => {
+    const updated = bloodSugarReadings.filter((_, i) => i !== index);
+    setBloodSugarReadings(updated);
+    localStorage.setItem('bloodSugarReadings', JSON.stringify(updated));
+  };
+
+  const getBloodSugarStatus = (value: number, label: BloodSugarReading['label']) => {
+    if (label === 'fasting') {
+      if (value < 70) return { color: 'text-blue-600', bg: 'bg-blue-50', status: 'Low' };
+      if (value <= 99) return { color: 'text-green-600', bg: 'bg-green-50', status: 'Normal' };
+      if (value <= 125) return { color: 'text-yellow-600', bg: 'bg-yellow-50', status: 'Pre-diabetic' };
+      return { color: 'text-red-600', bg: 'bg-red-50', status: 'High' };
+    }
+    if (value < 70) return { color: 'text-blue-600', bg: 'bg-blue-50', status: 'Low' };
+    if (value <= 140) return { color: 'text-green-600', bg: 'bg-green-50', status: 'Normal' };
+    if (value <= 199) return { color: 'text-yellow-600', bg: 'bg-yellow-50', status: 'Elevated' };
+    return { color: 'text-red-600', bg: 'bg-red-50', status: 'High' };
+  };
 
   useEffect(() => {
     if (user?.role === 'doctor') {
@@ -73,13 +123,17 @@ export default function Dashboard() {
 
   // Handle role assignment and role-based redirects
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading) {
+      // Redirect unauthenticated users to login
+      if (!user) {
+        router.push('/auth/login');
+        return;
+      }
       // If no role yet, force role selection
       if (!user.role) {
         router.replace('/auth/select-role');
         return;
       }
-
       // Redirect based on user role for better UX
       if (user.role === 'restaurant_owner') {
         router.push('/restaurant-setup');
@@ -94,29 +148,30 @@ export default function Dashboard() {
 
   const loadDoctorData = async () => {
     if (!user) return;
-    
     setLoadingDoctorData(true);
     try {
-      // Load consultations for this doctor
       const consultationsData = await getConsultationsByDoctor(user.id);
       setConsultations(consultationsData);
 
-      // Load all diets to see patient diet plans
-      const dietsData = await getDiets();
-      setAllDiets(dietsData);
-
-      // Load progress for patients who have consultations
-      const patientIds = consultationsData.reduce((acc, c) => {
+      // Load real patient names
+      const uniquePatientIds = consultationsData.reduce((acc, c) => {
         if (!acc.includes(c.patientId)) acc.push(c.patientId);
         return acc;
       }, [] as string[]);
+      const names: { [key: string]: string } = {};
+      await Promise.all(uniquePatientIds.map(async (id) => {
+        const patient = await getUser(id);
+        names[id] = patient?.name ?? `Patient (${id.slice(0, 6)}...)`;
+      }));
+      setPatientNames(names);
+
+      const dietsData = await getDiets();
+      setAllDiets(dietsData);
+
       const progressData: { [key: string]: ProgressType[] } = {};
-      
-      for (const patientId of patientIds) {
-        const progress = await getUserProgress(patientId);
-        progressData[patientId] = progress;
+      for (const patientId of uniquePatientIds) {
+        progressData[patientId] = await getUserProgress(patientId);
       }
-      
       setPatientProgress(progressData);
     } catch (error) {
       console.error('Error loading doctor data:', error);
@@ -134,6 +189,7 @@ export default function Dashboard() {
   }
 
   if (!user) {
+    // Router redirect is in progress; render nothing to avoid flash
     return null;
   }
 
@@ -323,9 +379,9 @@ export default function Dashboard() {
     }
   ];
 
-  const features = user.role === 'admin' ? adminFeatures : 
-                  user.role === 'doctor' ? doctorFeatures : 
-                  patientFeatures;
+  const features = user.role === 'admin' ? adminFeatures :
+    user.role === 'doctor' ? doctorFeatures :
+      patientFeatures;
 
   // Doctor Dashboard Content
   if (user.role === 'doctor') {
@@ -347,8 +403,8 @@ export default function Dashboard() {
                 <Badge className={getRoleColor(user.role)}>
                   {getRoleLabel(user.role)}
                 </Badge>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => setIsProfileDialogOpen(true)}
                 >
@@ -367,12 +423,12 @@ export default function Dashboard() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                                 <div className="text-2xl font-bold">
-                   {loadingDoctorData ? '...' : consultations.reduce((acc, c) => {
-                     if (!acc.includes(c.patientId)) acc.push(c.patientId);
-                     return acc;
-                   }, [] as string[]).length}
-                 </div>
+                <div className="text-2xl font-bold">
+                  {loadingDoctorData ? '...' : consultations.reduce((acc, c) => {
+                    if (!acc.includes(c.patientId)) acc.push(c.patientId);
+                    return acc;
+                  }, [] as string[]).length}
+                </div>
               </CardContent>
             </Card>
 
@@ -454,7 +510,7 @@ export default function Dashboard() {
                       {consultations.slice(0, 5).map((consultation) => (
                         <TableRow key={consultation.id}>
                           <TableCell className="font-medium">
-                            Patient ID: {consultation.patientId.slice(0, 8)}...
+                            {patientNames[consultation.patientId] ?? `Patient (${consultation.patientId.slice(0, 6)}...)`}
                           </TableCell>
                           <TableCell>
                             {consultation.timeSlot.toDate().toLocaleString()}
@@ -592,7 +648,7 @@ export default function Dashboard() {
                         <div className="flex justify-between text-sm">
                           <span>Completion Rate:</span>
                           <span className="font-medium">
-                            {progress.length > 0 
+                            {progress.length > 0
                               ? Math.round((progress.filter(p => p.status === 'completed').length / progress.length) * 100)
                               : 0}%
                           </span>
@@ -639,7 +695,7 @@ export default function Dashboard() {
                 Update your personal and health information
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="edit-name">Full Name</Label>
@@ -735,8 +791,8 @@ export default function Dashboard() {
               <Badge className={getRoleColor(user.role)}>
                 {getRoleLabel(user.role)}
               </Badge>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => setIsProfileDialogOpen(true)}
               >
@@ -764,17 +820,17 @@ export default function Dashboard() {
                 <Label className="text-sm font-medium text-gray-500">Full Name</Label>
                 <div className="text-lg font-semibold">{user.name}</div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-500">Age</Label>
                 <div className="text-lg font-semibold">{user.age} years</div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-500">Weight</Label>
                 <div className="text-lg font-semibold">{user.weight} kg</div>
               </div>
-              
+
               {user.diabetesType && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-500">Diabetes Type</Label>
@@ -782,15 +838,15 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-            
+
             <Separator className="my-6" />
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-500">Email</Label>
                 <div className="text-lg font-semibold">{user.email}</div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-500">Member Since</Label>
                 <div className="text-lg font-semibold">
@@ -844,6 +900,80 @@ export default function Dashboard() {
           </Card>
         </div>
 
+        {/* Blood Sugar Tracker - Patient only */}
+        {user.role === 'patient' && (
+          <Card className="mb-8 border-red-100">
+            <CardHeader>
+              <CardTitle className="flex items-center text-red-700">
+                <Droplets className="w-5 h-5 mr-2" />
+                Blood Sugar Tracker
+              </CardTitle>
+              <CardDescription>Log and monitor your blood glucose readings (mg/dL)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-3 mb-5">
+                <Input
+                  type="number"
+                  placeholder="Value (mg/dL)"
+                  className="w-40"
+                  value={newSugarValue}
+                  onChange={(e) => setNewSugarValue(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addBloodSugarReading()}
+                />
+                <Select value={newSugarLabel} onValueChange={(v) => setNewSugarLabel(v as BloodSugarReading['label'])}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fasting">Fasting</SelectItem>
+                    <SelectItem value="post-meal">Post-Meal</SelectItem>
+                    <SelectItem value="bedtime">Bedtime</SelectItem>
+                    <SelectItem value="random">Random</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button onClick={addBloodSugarReading} className="bg-red-600 hover:bg-red-700 text-white">
+                  <Plus className="w-4 h-4 mr-1" /> Log Reading
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2 mb-4 text-xs">
+                <span className="px-2 py-1 bg-green-50 text-green-700 rounded-full font-medium">Normal fasting: 70–99</span>
+                <span className="px-2 py-1 bg-yellow-50 text-yellow-700 rounded-full font-medium">Pre-diabetic: 100–125</span>
+                <span className="px-2 py-1 bg-red-50 text-red-700 rounded-full font-medium">Diabetic: 126+</span>
+                <span className="px-2 py-1 bg-green-50 text-green-700 rounded-full font-medium">Normal post-meal: &lt;140</span>
+              </div>
+              {bloodSugarReadings.length === 0 ? (
+                <div className="text-center py-6 text-gray-400">
+                  <Droplets className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No readings yet. Add your first reading above.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {bloodSugarReadings.map((r, i) => {
+                    const s = getBloodSugarStatus(r.value, r.label);
+                    return (
+                      <div key={i} className={`flex items-center justify-between p-3 rounded-lg ${s.bg}`}>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-xl font-bold ${s.color}`}>{r.value} <span className="text-sm font-normal">mg/dL</span></span>
+                          <div>
+                            <Badge variant="outline" className="text-xs capitalize">{r.label.replace('-', ' ')}</Badge>
+                            <span className={`ml-2 text-xs font-semibold ${s.color}`}>{s.status}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-500">{r.time}</span>
+                          <button onClick={() => removeBloodSugarReading(i)} className="text-gray-400 hover:text-red-500 transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((feature) => (
@@ -892,7 +1022,7 @@ export default function Dashboard() {
               Update your personal and health information
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="edit-role">Role</Label>

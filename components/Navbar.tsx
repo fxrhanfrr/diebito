@@ -29,6 +29,7 @@ export default function Navbar() {
           { href: '/admin', label: 'Admin Panel' },
           { href: '/consultations', label: 'Manage Doctors' },
           { href: '/food-ordering', label: 'Manage Restaurants' },
+          { href: '/ai-assistant', label: 'AI Assistant' },
         ];
       case 'doctor':
         return [
@@ -36,6 +37,7 @@ export default function Navbar() {
           { href: '/doctor-setup', label: 'My Profile' },
           { href: '/consultations', label: 'My Consultations' },
           { href: '/patients', label: 'My Patients' },
+          { href: '/ai-assistant', label: 'AI Assistant' },
         ];
       case 'restaurant_owner':
         return [
@@ -52,7 +54,7 @@ export default function Navbar() {
           { href: '/exercises', label: 'Exercise' },
           { href: '/food-ordering', label: 'Order Food' },
           { href: '/my-orders', label: 'My Orders' },
-          { href: '/meal-suggestions', label: 'Meal Suggestions' },
+          { href: '/ai-assistant', label: 'AI Assistant' },
         ];
     }
   };
@@ -150,54 +152,54 @@ export default function Navbar() {
             {profile && (
               <>
                 <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user?.photoURL || ''} alt={profile?.name || ''} />
-                      <AvatarFallback>
-                        {profile?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard" className="flex items-center">
-                      <User className="mr-2 h-4 w-4" />
-                      Profile
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/settings" className="flex items-center">
-                      <Settings className="mr-2 h-4 w-4" />
-                      Settings
-                    </Link>
-                  </DropdownMenuItem>
-                  {profile?.role === 'admin' && (
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user?.photoURL || ''} alt={profile?.name || ''} />
+                        <AvatarFallback>
+                          {profile?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuItem asChild>
-                      <Link href="/admin" className="flex items-center">
-                        <Shield className="mr-2 h-4 w-4" />
-                        Admin Panel
+                      <Link href="/dashboard" className="flex items-center">
+                        <User className="mr-2 h-4 w-4" />
+                        Profile
                       </Link>
                     </DropdownMenuItem>
-                  )}
-                  {profile?.role === 'restaurant_owner' && (
                     <DropdownMenuItem asChild>
-                      <Link href="/restaurant-setup" className="flex items-center">
-                        <Shield className="mr-2 h-4 w-4" />
-                        Restaurant Setup
+                      <Link href="/settings" className="flex items-center">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
                       </Link>
                     </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={signOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    {profile?.role === 'admin' && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin" className="flex items-center">
+                          <Shield className="mr-2 h-4 w-4" />
+                          Admin Panel
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    {profile?.role === 'restaurant_owner' && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/restaurant-setup" className="flex items-center">
+                          <Shield className="mr-2 h-4 w-4" />
+                          Restaurant Setup
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={signOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             )}
-            
+
             <Button
               variant="ghost"
               size="sm"
@@ -242,7 +244,7 @@ export default function Navbar() {
                       {item.label}
                     </Link>
                   ))}
-                  
+
                 </>
               ) : (
                 <>
