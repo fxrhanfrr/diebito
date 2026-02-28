@@ -14,4 +14,17 @@ const nextConfig = {
   images: { unoptimized: true },
 };
 
+// Setup Cloudflare dev platform in development
+if (process.env.NODE_ENV === 'development') {
+  (async () => {
+    try {
+      const { setupDevPlatform } = await import('@cloudflare/next-on-pages/next-config-utils');
+      await setupDevPlatform();
+    } catch {
+      // Not a Cloudflare environment, skip
+    }
+  })();
+}
+
 module.exports = withPWA(nextConfig);
+

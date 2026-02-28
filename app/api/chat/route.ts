@@ -4,7 +4,7 @@ import { GoogleGenerativeAIStream, Message, StreamingTextResponse } from 'ai';
 // Create an instance of the Google Generative AI SDK
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || '');
 
-// export const runtime = 'edge'; // Use Node.js runtime for better logging/compat
+export const runtime = 'edge'; // Required for Cloudflare Pages
 
 export async function POST(req: Request) {
     try {
