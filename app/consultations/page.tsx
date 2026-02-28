@@ -72,7 +72,7 @@ export default function Consultations() {
       const doctorsData = await getAllDoctorProfiles();
       console.log('Doctors loaded:', doctorsData);
       setDoctors(doctorsData);
-      
+
       // If no doctors found, let's also try to get all doctor profiles without verification filter
       if (doctorsData.length === 0) {
         console.log('No verified doctors found, checking all doctor profiles...');
@@ -91,7 +91,7 @@ export default function Consultations() {
 
   const loadConsultations = async () => {
     if (!profile) return;
-    
+
     try {
       if (profile.role === 'doctor') {
         const consultations = await getConsultationsByDoctor(profile.id);
@@ -99,7 +99,7 @@ export default function Consultations() {
       } else if (profile.role === 'patient') {
         const consultations = await getConsultationsByUser(profile.id);
         setPatientConsultations(consultations);
-        
+
         // Fetch doctor names for patient consultations
         await fetchDoctorNames(consultations);
       }
@@ -148,17 +148,17 @@ export default function Consultations() {
 
     try {
       setLoading(true);
-      
+
       const consultationData = {
         doctorId: selectedDoctor.id,
         patientId: profile.id,
-        timeSlot: new Date(`${bookingData.date}T${bookingData.time}`),
+        timeSlot: Timestamp.fromDate(new Date(`${bookingData.date}T${bookingData.time}`)),
         status: 'pending' as const,
         prescriptionLink: ''
       };
 
       await createConsultation(consultationData);
-      
+
       // Reset form
       setSelectedDoctor(null);
       setBookingData({
@@ -167,10 +167,10 @@ export default function Consultations() {
         type: 'video',
         notes: ''
       });
-      
+
       // Reload consultations
       await loadConsultations();
-      
+
       alert('Consultation booked successfully!');
     } catch (error) {
       console.error('Error booking consultation:', error);
@@ -201,9 +201,9 @@ export default function Consultations() {
   };
 
   const handleConsultationUpdate = (id: string, field: string, value: string) => {
-    setDoctorConsultations(prev => 
-      prev.map(consultation => 
-        consultation.id === id 
+    setDoctorConsultations(prev =>
+      prev.map(consultation =>
+        consultation.id === id
           ? { ...consultation, [field]: value }
           : consultation
       )
@@ -211,9 +211,9 @@ export default function Consultations() {
   };
 
   const handleStatusChange = (id: string, status: string) => {
-    setDoctorConsultations(prev => 
-      prev.map(consultation => 
-        consultation.id === id 
+    setDoctorConsultations(prev =>
+      prev.map(consultation =>
+        consultation.id === id
           ? { ...consultation, status }
           : consultation
       )
@@ -235,7 +235,7 @@ export default function Consultations() {
 
             <div className="space-section">
               <h2 className="text-2xl font-bold mb-6">Your Consultations</h2>
-              
+
               {doctorConsultations.length > 0 ? (
                 <div className="space-content">
                   {doctorConsultations.map((consultation) => (
@@ -268,15 +268,15 @@ export default function Consultations() {
                               </Badge>
                               {consultation.status === 'pending' && (
                                 <div className="flex gap-2">
-                                  <Button 
-                                    size="sm" 
+                                  <Button
+                                    size="sm"
                                     onClick={() => handleStatusChange(consultation.id, 'completed')}
                                   >
                                     <CheckCircle className="h-4 w-4 mr-1" />
                                     Complete
                                   </Button>
-                                  <Button 
-                                    size="sm" 
+                                  <Button
+                                    size="sm"
                                     variant="outline"
                                     onClick={() => handleStatusChange(consultation.id, 'cancelled')}
                                   >
@@ -384,7 +384,7 @@ export default function Consultations() {
           {activeTab === 'book' && (
             <div className="space-section">
               <h2 className="text-2xl font-bold mb-6">Available Doctors</h2>
-              
+
               {/* Search Bar */}
               <div className="mb-6">
                 <div className="relative max-w-md">
@@ -404,7 +404,7 @@ export default function Consultations() {
                     <div className="empty-state-icon">👨‍⚕️</div>
                     <h3 className="empty-state-title">No Doctors Available</h3>
                     <p className="empty-state-description">
-                      {doctors.length === 0 
+                      {doctors.length === 0
                         ? "No verified doctors are currently available. Please check back later or contact support."
                         : "No doctors match your search criteria. Try adjusting your search terms."
                       }
@@ -419,71 +419,71 @@ export default function Consultations() {
               ) : (
                 <div className="grid-responsive">
                   {filteredDoctors.map((doctor) => (
-                  <Card key={doctor.id} className="card-hover">
-                    <CardHeader className="text-center">
-                      <div className="w-20 h-20 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-                        {doctor.profilePicture ? (
-                          <img 
-                            src={doctor.profilePicture} 
-                            alt={doctor.name}
-                            className="w-20 h-20 rounded-full object-cover"
-                          />
-                        ) : (
-                          <User className="h-10 w-10 text-blue-600" />
-                        )}
-                      </div>
-                      <CardTitle className="text-lg">{doctor.name}</CardTitle>
-                      <p className="text-blue-600 font-medium">{doctor.specialty}</p>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 text-yellow-500" />
-                          <span>{doctor.rating.toFixed(1)}</span>
-                          <span className="text-gray-500">({doctor.totalConsultations} consultations)</span>
-                        </div>
-                        <Badge className="bg-green-100 text-green-800">Verified</Badge>
-                      </div>
-
-                      <div className="space-y-2">
-                        <p className="text-sm text-gray-600 line-clamp-2">{doctor.bio}</p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Experience:</p>
-                        <p className="text-sm text-gray-600">{doctor.experience} years</p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Languages:</p>
-                        <div className="flex flex-wrap gap-1">
-                          {doctor.languages.slice(0, 3).map((lang: string) => (
-                            <Badge key={lang} variant="outline" className="text-xs">
-                              {lang}
-                            </Badge>
-                          ))}
-                          {doctor.languages.length > 3 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{doctor.languages.length - 3} more
-                            </Badge>
+                    <Card key={doctor.id} className="card-hover">
+                      <CardHeader className="text-center">
+                        <div className="w-20 h-20 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+                          {doctor.profilePicture ? (
+                            <img
+                              src={doctor.profilePicture}
+                              alt={doctor.name}
+                              className="w-20 h-20 rounded-full object-cover"
+                            />
+                          ) : (
+                            <User className="h-10 w-10 text-blue-600" />
                           )}
                         </div>
-                      </div>
+                        <CardTitle className="text-lg">{doctor.name}</CardTitle>
+                        <p className="text-blue-600 font-medium">{doctor.specialty}</p>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-1">
+                            <Star className="h-4 w-4 text-yellow-500" />
+                            <span>{doctor.rating.toFixed(1)}</span>
+                            <span className="text-gray-500">({doctor.totalConsultations} consultations)</span>
+                          </div>
+                          <Badge className="bg-green-100 text-green-800">Verified</Badge>
+                        </div>
 
-                      <div className="flex items-center justify-between">
-                        <span className="text-lg font-bold text-green-600">
-                          ₹{doctor.consultationFee}
-                        </span>
-                        <Button 
-                          size="sm"
-                          onClick={() => setSelectedDoctor(doctor)}
-                        >
-                          Book Now
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                        <div className="space-y-2">
+                          <p className="text-sm text-gray-600 line-clamp-2">{doctor.bio}</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Experience:</p>
+                          <p className="text-sm text-gray-600">{doctor.experience} years</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Languages:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {doctor.languages.slice(0, 3).map((lang: string) => (
+                              <Badge key={lang} variant="outline" className="text-xs">
+                                {lang}
+                              </Badge>
+                            ))}
+                            {doctor.languages.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{doctor.languages.length - 3} more
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-lg font-bold text-green-600">
+                            ₹{doctor.consultationFee}
+                          </span>
+                          <Button
+                            size="sm"
+                            onClick={() => setSelectedDoctor(doctor)}
+                          >
+                            Book Now
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               )}
 
@@ -508,7 +508,7 @@ export default function Consultations() {
                           min={new Date().toISOString().split('T')[0]}
                         />
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="time">Time</Label>
                         <Input
@@ -518,12 +518,12 @@ export default function Consultations() {
                           onChange={(e) => setBookingData(prev => ({ ...prev, time: e.target.value }))}
                         />
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="type">Consultation Type</Label>
                         <Select
                           value={bookingData.type}
-                          onValueChange={(value: 'video' | 'phone' | 'in-person') => 
+                          onValueChange={(value: 'video' | 'phone' | 'in-person') =>
                             setBookingData(prev => ({ ...prev, type: value }))
                           }
                         >
@@ -537,7 +537,7 @@ export default function Consultations() {
                           </SelectContent>
                         </Select>
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="notes">Notes (Optional)</Label>
                         <Textarea
@@ -548,7 +548,7 @@ export default function Consultations() {
                           rows={3}
                         />
                       </div>
-                      
+
                       <div className="flex space-x-2">
                         <Button
                           variant="outline"
@@ -575,7 +575,7 @@ export default function Consultations() {
           {activeTab === 'appointments' && (
             <div className="space-section">
               <h2 className="text-2xl font-bold mb-6">My Appointments</h2>
-              
+
               {patientConsultations.length > 0 ? (
                 <div className="space-content">
                   {patientConsultations.map((consultation) => (
