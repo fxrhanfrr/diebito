@@ -1,0 +1,10 @@
+name = "diebito"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+NEXTJS_BUILD_DEPLOY = "true"
+
+[[assets.rules]]
+match = "/_next/static/**"
+headers = { cache-control = "public, max-age=31536000, immutable" }
