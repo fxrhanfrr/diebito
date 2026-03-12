@@ -13,8 +13,7 @@
     "test:e2e:ui": "playwright test --ui",
     "format": "prettier --write .",
     "prepare": "husky install",
-    "cf:build": "npx @cloudflare/next-on-pages",
-    "cf:deploy": "npx @cloudflare/next-on-pages && wrangler pages deploy .vercel/output/static"
+    "pages:build": "next build && opennextjs-cloudflare build"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.0",
