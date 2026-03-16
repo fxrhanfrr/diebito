@@ -7,10 +7,28 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import AuthGuard from '@/components/AuthGuard';
 import { useAuth } from '@/hooks/useAuth';
-import { collection, getDocs, query, where, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  updateDoc,
+  doc,
+  serverTimestamp,
+} from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Restaurant, Order } from '@/lib/types';
-import { Search, MapPin, Phone, Truck, CheckCircle, XCircle, Clock, Package, User } from 'lucide-react';
+import {
+  Search,
+  MapPin,
+  Phone,
+  Truck,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Package,
+  User,
+} from 'lucide-react';
 import RestaurantMenu from '@/components/RestaurantMenu';
 
 export default function FoodOrdering() {
@@ -28,9 +46,9 @@ export default function FoodOrdering() {
       // Collect all unique food IDs and user IDs
       const foodIds = new Set<string>();
       const userIds = new Set<string>();
-      
-      orders.forEach(order => {
-        order.items?.forEach(item => foodIds.add(item.foodId));
+
+      orders.forEach((order) => {
+        order.items?.forEach((item) => foodIds.add(item.foodId));
         if (order.userId) userIds.add(order.userId);
       });
 
@@ -39,7 +57,7 @@ export default function FoodOrdering() {
         const foodsQuery = query(collection(db, 'foods'));
         const foodsSnapshot = await getDocs(foodsQuery);
         const newFoodsMap = new Map<string, any>();
-        foodsSnapshot.docs.forEach(doc => {
+        foodsSnapshot.docs.forEach((doc) => {
           newFoodsMap.set(doc.id, { id: doc.id, ...doc.data() });
         });
         setFoodsMap(newFoodsMap);
@@ -50,7 +68,7 @@ export default function FoodOrdering() {
         const usersQuery = query(collection(db, 'users'));
         const usersSnapshot = await getDocs(usersQuery);
         const newUsersMap = new Map<string, any>();
-        usersSnapshot.docs.forEach(doc => {
+        usersSnapshot.docs.forEach((doc) => {
           newUsersMap.set(doc.id, { id: doc.id, ...doc.data() });
         });
         setUsersMap(newUsersMap);
@@ -64,14 +82,14 @@ export default function FoodOrdering() {
     try {
       await updateDoc(doc(db, 'orders', orderId), {
         status: newStatus,
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
       });
-      
+
       // Update local state
-      setOrders(prev => prev.map(order => 
-        order.id === orderId ? { ...order, status: newStatus as any } : order
-      ));
-      
+      setOrders((prev) =>
+        prev.map((order) => (order.id === orderId ? { ...order, status: newStatus as any } : order))
+      );
+
       console.log(`Order ${orderId} status updated to ${newStatus}`);
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -117,7 +135,7 @@ export default function FoodOrdering() {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
@@ -130,9 +148,9 @@ export default function FoodOrdering() {
           where('isActive', '==', true)
         );
         const querySnapshot = await getDocs(restaurantsQuery);
-        const restaurantsData = querySnapshot.docs.map(doc => ({
+        const restaurantsData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         })) as Restaurant[];
         console.log('Fetched restaurants:', restaurantsData);
         setRestaurants(restaurantsData);
@@ -146,14 +164,13 @@ export default function FoodOrdering() {
     fetchRestaurants();
   }, []);
 
-  
-
-  const filteredRestaurants = restaurants.filter(restaurant => {
-    const matchesSearch = restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         restaurant.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         restaurant.specialties.some(specialty => 
-                           specialty.toLowerCase().includes(searchTerm.toLowerCase())
-                         );
+  const filteredRestaurants = restaurants.filter((restaurant) => {
+    const matchesSearch =
+      restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      restaurant.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      restaurant.specialties.some((specialty) =>
+        specialty.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     return matchesSearch;
   });
 
@@ -161,7 +178,7 @@ export default function FoodOrdering() {
   useEffect(() => {
     const loadOwnerOrders = async () => {
       if (profile?.role !== 'restaurant_owner') return;
-      
+
       try {
         setOrdersLoading(true);
         let restaurantId = profile?.restaurantId || '';
@@ -215,8 +232,12 @@ export default function FoodOrdering() {
                 <CardContent className="empty-state">
                   <div className="empty-state-icon">🧾</div>
                   <div className="empty-state-title">No orders yet</div>
-                  <p className="empty-state-description">Orders placed for your restaurant will appear here.</p>
-                  <Button onClick={() => window.location.href = '/restaurant-setup'}>Manage Restaurant</Button>
+                  <p className="empty-state-description">
+                    Orders placed for your restaurant will appear here.
+                  </p>
+                  <Button onClick={() => (window.location.href = '/restaurant-setup')}>
+                    Manage Restaurant
+                  </Button>
                 </CardContent>
               </Card>
             ) : (
@@ -234,13 +255,15 @@ export default function FoodOrdering() {
                             </p>
                           </div>
                         </div>
-                        <Badge className={`${getStatusColor(order.status)} flex items-center space-x-1`}>
+                        <Badge
+                          className={`${getStatusColor(order.status)} flex items-center space-x-1`}
+                        >
                           {getStatusIcon(order.status)}
                           <span className="capitalize">{order.status}</span>
                         </Badge>
                       </div>
                     </CardHeader>
-                    
+
                     <CardContent className="space-y-4">
                       {/* Order Items */}
                       <div>
@@ -249,7 +272,10 @@ export default function FoodOrdering() {
                           {order.items?.map((item, index) => {
                             const food = foodsMap.get(item.foodId);
                             return (
-                              <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+                              <div
+                                key={index}
+                                className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
+                              >
                                 <div className="flex items-center space-x-3">
                                   <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
                                     <span className="text-sm font-medium">{item.qty}</span>
@@ -287,7 +313,9 @@ export default function FoodOrdering() {
                             <span className="font-medium">Customer:</span>
                           </div>
                           <p className="text-sm text-gray-600 ml-6">
-                            {usersMap.get(order.userId)?.name || order.contactName || 'Name not provided'}
+                            {usersMap.get(order.userId)?.name ||
+                              order.contactName ||
+                              'Name not provided'}
                             {order.contactPhone && ` • ${order.contactPhone}`}
                           </p>
                         </div>
@@ -317,14 +345,14 @@ export default function FoodOrdering() {
                       <div className="flex space-x-2 pt-2">
                         {order.status === 'pending' && (
                           <>
-                            <Button 
+                            <Button
                               onClick={() => handleOrderStatusUpdate(order.id, 'confirmed')}
                               className="bg-green-600 hover:bg-green-700 text-white"
                             >
                               <CheckCircle className="h-4 w-4 mr-2" />
                               Accept Order
                             </Button>
-                            <Button 
+                            <Button
                               onClick={() => handleOrderStatusUpdate(order.id, 'cancelled')}
                               variant="destructive"
                             >
@@ -334,7 +362,7 @@ export default function FoodOrdering() {
                           </>
                         )}
                         {order.status === 'confirmed' && (
-                          <Button 
+                          <Button
                             onClick={() => handleOrderStatusUpdate(order.id, 'preparing')}
                             className="bg-orange-600 hover:bg-orange-700 text-white"
                           >
@@ -343,7 +371,7 @@ export default function FoodOrdering() {
                           </Button>
                         )}
                         {order.status === 'preparing' && (
-                          <Button 
+                          <Button
                             onClick={() => handleOrderStatusUpdate(order.id, 'ready')}
                             className="bg-purple-600 hover:bg-purple-700 text-white"
                           >
@@ -352,7 +380,7 @@ export default function FoodOrdering() {
                           </Button>
                         )}
                         {order.status === 'ready' && (
-                          <Button 
+                          <Button
                             onClick={() => handleOrderStatusUpdate(order.id, 'delivered')}
                             className="bg-green-600 hover:bg-green-700 text-white"
                           >
@@ -392,21 +420,23 @@ export default function FoodOrdering() {
   return (
     <AuthGuard>
       <div className="page-container bg-page">
-        <div className="page-content">
-          <div className="page-header">
-            <h1 className="page-title">Diabetic-Friendly Food Delivery</h1>
-            <p className="page-subtitle">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
+          <div className="mb-8">
+            <h1 className="page-title mb-2">Diabetic-Friendly Food Delivery</h1>
+            <p className="page-subtitle mb-4">
               Order healthy, diabetes-approved meals from local restaurants
             </p>
             {profile && (
-              <p className="text-sm text-gray-600">Welcome, {profile.name} ({profile.role})</p>
+              <p className="text-sm text-gray-600">
+                Welcome, {profile.name} ({profile.role})
+              </p>
             )}
           </div>
 
           {/* Search */}
-          <div className="mb-8 space-y-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
+          <div className="mb-10">
+            <div className="max-w-[700px] mx-auto">
+              <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Search for food or restaurants..."
@@ -420,41 +450,50 @@ export default function FoodOrdering() {
 
           {/* Restaurant View */}
           {restaurants.length > 0 && (
-            <div className="page-header">
-              <h2 className="text-2xl font-bold mb-4">Available Restaurants</h2>
-              <div className="grid-responsive mb-8">
+            <div>
+              <h2 className="text-2xl font-bold mb-6">Available Restaurants</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredRestaurants.map((restaurant) => (
-                  <Card key={restaurant.id} className="card-hover">
-                    <CardHeader>
-                      <CardTitle className="text-lg">{restaurant.name}</CardTitle>
-                      <p className="text-sm text-gray-600">{restaurant.description}</p>
+                  <Card key={restaurant.id} className="card-hover flex flex-col h-full">
+                    <CardHeader className="p-5 pb-3">
+                      <CardTitle className="text-lg leading-snug mb-1">{restaurant.name}</CardTitle>
+                      <p className="text-sm text-gray-600 line-clamp-2">{restaurant.description}</p>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <MapPin className="h-4 w-4" />
-                        {restaurant.address}
+                    <CardContent className="p-5 pt-0 flex-1 flex flex-col">
+                      <div className="space-y-2.5">
+                        <div className="flex items-start gap-2 text-sm text-gray-600">
+                          <MapPin className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                          <span className="line-clamp-1">{restaurant.address}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Phone className="h-4 w-4 flex-shrink-0" />
+                          <span>{restaurant.phone}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Truck className="h-4 w-4 flex-shrink-0" />
+                          <span>
+                            {restaurant.deliveryRadius}km radius • ₹{restaurant.deliveryFee}{' '}
+                            delivery
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Phone className="h-4 w-4" />
-                        {restaurant.phone}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Truck className="h-4 w-4" />
-                        {restaurant.deliveryRadius}km radius • ₹{restaurant.deliveryFee} delivery
-                      </div>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1.5 mt-3 min-h-[28px]">
                         {restaurant.specialties.slice(0, 3).map((specialty) => (
-                          <Badge key={specialty} variant="outline" className="text-xs">
+                          <Badge
+                            key={specialty}
+                            variant="outline"
+                            className="text-xs whitespace-nowrap"
+                          >
                             {specialty}
                           </Badge>
                         ))}
                         {restaurant.specialties.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs whitespace-nowrap">
                             +{restaurant.specialties.length - 3} more
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="mt-auto pt-4 border-t flex items-center justify-between">
                         <div className="text-sm text-gray-600">
                           Min order: ₹{restaurant.minimumOrder}
                         </div>
