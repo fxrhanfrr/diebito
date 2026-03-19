@@ -9,12 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import AuthGuard from '@/components/AuthGuard';
-import { 
-  Users, 
-  FileText, 
-  Utensils, 
-  Activity, 
-  Stethoscope, 
+import {
+  Users,
+  FileText,
+  Utensils,
+  Activity,
+  Stethoscope,
   Pill,
   TrendingUp,
   Plus,
@@ -26,13 +26,19 @@ import {
   Star,
   Phone,
   Mail,
-  GraduationCap
+  GraduationCap,
+  Store,
 } from 'lucide-react';
-import { getAllDoctorProfilesForAdmin, updateDocument } from '@/lib/firestore';
+import {
+  getAllDoctorProfilesForAdmin,
+  getAllRestaurantsForAdmin,
+  updateDocument,
+} from '@/lib/firestore';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [doctorProfiles, setDoctorProfiles] = useState<any[]>([]);
+  const [restaurants, setRestaurants] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const stats = [
@@ -57,6 +63,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadDoctorProfiles();
+    loadRestaurants();
   }, []);
 
   const loadDoctorProfiles = async () => {
@@ -84,6 +91,30 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadRestaurants = async () => {
+    try {
+      setLoading(true);
+      const allRestaurants = await getAllRestaurantsForAdmin();
+      setRestaurants(allRestaurants);
+    } catch (error) {
+      console.error('Error loading restaurants:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyRestaurant = async (restaurantId: string, isActive: boolean) => {
+    try {
+      setLoading(true);
+      await updateDocument('restaurants', restaurantId, { isActive });
+      await loadRestaurants(); // Reload the list
+    } catch (error) {
+      console.error('Error updating restaurant status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AuthGuard requiredRole="admin">
       <div className="min-h-screen bg-gray-50 p-6">
@@ -94,10 +125,11 @@ export default function AdminDashboard() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-7 mb-8">
+            <TabsList className="grid grid-cols-8 mb-8 overflow-x-auto">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="users">Users</TabsTrigger>
               <TabsTrigger value="doctors">Doctors</TabsTrigger>
+              <TabsTrigger value="restaurants">Restaurants</TabsTrigger>
               <TabsTrigger value="diets">Diet Plans</TabsTrigger>
               <TabsTrigger value="exercises">Exercises</TabsTrigger>
               <TabsTrigger value="consultations">Consultations</TabsTrigger>
@@ -134,7 +166,10 @@ export default function AdminDashboard() {
                   <CardContent>
                     <div className="space-y-4">
                       {[1, 2, 3, 4].map((item) => (
-                        <div key={item} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        <div
+                          key={item}
+                          className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                        >
                           <div className="h-2 w-2 bg-green-500 rounded-full"></div>
                           <div>
                             <p className="font-medium text-sm">New user registered</p>
@@ -186,15 +221,22 @@ export default function AdminDashboard() {
                   <CardContent className="p-6">
                     <div className="space-y-4">
                       {dietPlans.map((plan) => (
-                        <div key={plan.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div
+                          key={plan.id}
+                          className="flex items-center justify-between p-4 border rounded-lg"
+                        >
                           <div>
                             <h3 className="font-semibold">{plan.name}</h3>
                             <p className="text-sm text-gray-600">{plan.users} active users</p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              plan.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                            }`}>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs ${
+                                plan.status === 'Active'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
                               {plan.status}
                             </span>
                             <Button size="sm" variant="outline">
@@ -226,7 +268,10 @@ export default function AdminDashboard() {
                   <CardContent className="p-6">
                     <div className="space-y-4">
                       {exercises.map((exercise) => (
-                        <div key={exercise.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div
+                          key={exercise.id}
+                          className="flex items-center justify-between p-4 border rounded-lg"
+                        >
                           <div>
                             <h3 className="font-semibold">{exercise.name}</h3>
                             <p className="text-sm text-gray-600">
@@ -294,8 +339,8 @@ export default function AdminDashboard() {
                               <div className="flex items-center gap-4 mb-4">
                                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
                                   {doctor.profilePicture ? (
-                                    <img 
-                                      src={doctor.profilePicture} 
+                                    <img
+                                      src={doctor.profilePicture}
                                       alt={doctor.name}
                                       className="w-16 h-16 rounded-full object-cover"
                                     />
@@ -307,7 +352,13 @@ export default function AdminDashboard() {
                                   <h3 className="text-xl font-semibold">{doctor.name}</h3>
                                   <p className="text-gray-600">{doctor.specialty}</p>
                                   <div className="flex items-center gap-2 mt-1">
-                                    <Badge className={doctor.isVerified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                                    <Badge
+                                      className={
+                                        doctor.isVerified
+                                          ? 'bg-green-100 text-green-800'
+                                          : 'bg-yellow-100 text-yellow-800'
+                                      }
+                                    >
                                       {doctor.isVerified ? 'Verified' : 'Pending Verification'}
                                     </Badge>
                                     <div className="flex items-center gap-1">
@@ -334,14 +385,22 @@ export default function AdminDashboard() {
                                   </div>
                                 </div>
                                 <div className="space-y-2">
-                                  <p className="text-sm"><strong>Experience:</strong> {doctor.experience} years</p>
-                                  <p className="text-sm"><strong>Consultation Fee:</strong> ₹{doctor.consultationFee}</p>
-                                  <p className="text-sm"><strong>License:</strong> {doctor.licenseNumber}</p>
+                                  <p className="text-sm">
+                                    <strong>Experience:</strong> {doctor.experience} years
+                                  </p>
+                                  <p className="text-sm">
+                                    <strong>Consultation Fee:</strong> ₹{doctor.consultationFee}
+                                  </p>
+                                  <p className="text-sm">
+                                    <strong>License:</strong> {doctor.licenseNumber}
+                                  </p>
                                 </div>
                               </div>
 
                               <div className="mb-4">
-                                <p className="text-sm text-gray-600 mb-2"><strong>Bio:</strong></p>
+                                <p className="text-sm text-gray-600 mb-2">
+                                  <strong>Bio:</strong>
+                                </p>
                                 <p className="text-sm">{doctor.bio}</p>
                               </div>
 
@@ -375,7 +434,7 @@ export default function AdminDashboard() {
                             <div className="flex flex-col gap-2 ml-4">
                               {!doctor.isVerified ? (
                                 <>
-                                  <Button 
+                                  <Button
                                     onClick={() => handleVerifyDoctor(doctor.id, true)}
                                     className="bg-green-600 hover:bg-green-700"
                                     disabled={loading}
@@ -383,7 +442,7 @@ export default function AdminDashboard() {
                                     <CheckCircle className="h-4 w-4 mr-2" />
                                     Approve
                                   </Button>
-                                  <Button 
+                                  <Button
                                     onClick={() => handleVerifyDoctor(doctor.id, false)}
                                     variant="outline"
                                     className="text-red-600 border-red-600 hover:bg-red-50"
@@ -394,8 +453,152 @@ export default function AdminDashboard() {
                                   </Button>
                                 </>
                               ) : (
-                                <Button 
+                                <Button
                                   onClick={() => handleVerifyDoctor(doctor.id, false)}
+                                  variant="outline"
+                                  className="text-red-600 border-red-600 hover:bg-red-50"
+                                  disabled={loading}
+                                >
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  Revoke Verification
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="restaurants">
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">Restaurant Management</h2>
+                  <Button onClick={loadRestaurants} disabled={loading}>
+                    {loading ? 'Loading...' : 'Refresh'}
+                  </Button>
+                </div>
+
+                {loading ? (
+                  <Card>
+                    <CardContent className="p-6 text-center">
+                      <div className="loading-spinner mx-auto mb-4"></div>
+                      <p className="text-gray-600">Loading restaurants...</p>
+                    </CardContent>
+                  </Card>
+                ) : restaurants.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-6 text-center">
+                      <div className="text-6xl mb-4">🏪</div>
+                      <h3 className="text-xl font-semibold mb-2">No Restaurants Present</h3>
+                      <p className="text-gray-600">No restaurants have registered yet.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {restaurants.map((restaurant) => (
+                      <Card key={restaurant.id}>
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-4 mb-4">
+                                <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center">
+                                  {restaurant.imageUrl ? (
+                                    <img
+                                      src={restaurant.imageUrl}
+                                      alt={restaurant.name}
+                                      className="w-16 h-16 rounded-full object-cover"
+                                    />
+                                  ) : (
+                                    <Store className="h-8 w-8 text-orange-600" />
+                                  )}
+                                </div>
+                                <div>
+                                  <h3 className="text-xl font-semibold">{restaurant.name}</h3>
+                                  <p className="text-gray-600">{restaurant.address}</p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Badge
+                                      className={
+                                        restaurant.isActive
+                                          ? 'bg-green-100 text-green-800'
+                                          : 'bg-yellow-100 text-yellow-800'
+                                      }
+                                    >
+                                      {restaurant.isActive ? 'Active' : 'Pending/Inactive'}
+                                    </Badge>
+                                    <div className="flex items-center gap-1">
+                                      <Star className="h-4 w-4 text-yellow-500" />
+                                      <span className="text-sm">
+                                        {restaurant.rating?.toFixed(1) || '0.0'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <Mail className="h-4 w-4 text-gray-400" />
+                                    <span className="text-sm">{restaurant.email}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Phone className="h-4 w-4 text-gray-400" />
+                                    <span className="text-sm">{restaurant.phone}</span>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <p className="text-sm">
+                                    <strong>Delivery Radius:</strong> {restaurant.deliveryRadius} km
+                                  </p>
+                                  <p className="text-sm">
+                                    <strong>Delivery Fee:</strong> ₹{restaurant.deliveryFee}
+                                  </p>
+                                  <p className="text-sm">
+                                    <strong>Min Order:</strong> ₹{restaurant.minimumOrder}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="mb-4">
+                                <p className="text-sm text-gray-600 mb-2">
+                                  <strong>Description:</strong>
+                                </p>
+                                <p className="text-sm">{restaurant.description}</p>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2">
+                                <div>
+                                  <p className="text-sm font-medium mb-1">Specialties:</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {restaurant.specialties?.map((spec: string) => (
+                                      <Badge key={spec} variant="outline" className="text-xs">
+                                        {spec}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col gap-2 ml-4">
+                              {!restaurant.isActive ? (
+                                <>
+                                  <Button
+                                    onClick={() => handleVerifyRestaurant(restaurant.id, true)}
+                                    className="bg-green-600 hover:bg-green-700"
+                                    disabled={loading}
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Approve
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button
+                                  onClick={() => handleVerifyRestaurant(restaurant.id, false)}
                                   variant="outline"
                                   className="text-red-600 border-red-600 hover:bg-red-50"
                                   disabled={loading}
@@ -444,9 +647,9 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                       <Label htmlFor="content">Content</Label>
-                      <Textarea 
-                        id="content" 
-                        placeholder="Enter content here..." 
+                      <Textarea
+                        id="content"
+                        placeholder="Enter content here..."
                         className="min-h-[200px]"
                       />
                     </div>

@@ -16,7 +16,7 @@ import {
   DocumentData,
   QuerySnapshot,
   DocumentSnapshot,
-  CollectionReference
+  CollectionReference,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import {
@@ -29,7 +29,7 @@ import {
   Comment,
   Exercise,
   Food,
-  Restaurant
+  Restaurant,
 } from './types';
 
 // Generic CRUD operations
@@ -39,18 +39,15 @@ export const createDocument = async <T extends DocumentData>(
 ): Promise<string> => {
   const docRef = await addDoc(collection(db, collectionName), {
     ...data,
-    createdAt: Timestamp.now()
+    createdAt: Timestamp.now(),
   });
   return docRef.id;
 };
 
-export const getDocument = async <T>(
-  collectionName: string,
-  id: string
-): Promise<T | null> => {
+export const getDocument = async <T>(collectionName: string, id: string): Promise<T | null> => {
   const docRef = doc(db, collectionName, id);
   const docSnap = await getDoc(docRef);
-  
+
   if (docSnap.exists()) {
     return { id: docSnap.id, ...docSnap.data() } as T;
   }
@@ -66,10 +63,7 @@ export const updateDocument = async <T extends DocumentData>(
   await updateDoc(docRef, data as any);
 };
 
-export const deleteDocument = async (
-  collectionName: string,
-  id: string
-): Promise<void> => {
+export const deleteDocument = async (collectionName: string, id: string): Promise<void> => {
   const docRef = doc(db, collectionName, id);
   await deleteDoc(docRef);
 };
@@ -88,7 +82,7 @@ export const getUser = async (id: string): Promise<User | null> => {
 export const getUserByEmail = async (email: string): Promise<User | null> => {
   const q = query(collection(db, 'users'), where('email', '==', email), limit(1));
   const querySnapshot = await getDocs(q);
-  
+
   if (!querySnapshot.empty) {
     const doc = querySnapshot.docs[0];
     return { id: doc.id, ...doc.data() } as User;
@@ -104,26 +98,23 @@ export const getAllDoctors = async (): Promise<User[]> => {
     orderBy('name', 'asc')
   );
   const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({
+
+  return querySnapshot.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data()
+    ...doc.data(),
   })) as User[];
 };
 
 export const getAllDoctorProfiles = async (): Promise<any[]> => {
   try {
     console.log('Querying doctorProfiles collection...');
-    const q = query(
-      collection(db, 'doctorProfiles'),
-      where('isVerified', '==', true)
-    );
+    const q = query(collection(db, 'doctorProfiles'), where('isVerified', '==', true));
     const querySnapshot = await getDocs(q);
-    
+
     console.log('Query snapshot size:', querySnapshot.size);
-    const results = querySnapshot.docs.map(doc => ({
+    const results = querySnapshot.docs.map((doc) => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
     }));
     console.log('Doctor profiles found:', results);
     return results;
@@ -138,11 +129,11 @@ export const getAllDoctorProfilesForAdmin = async (): Promise<any[]> => {
     console.log('Querying all doctorProfiles for admin...');
     const q = query(collection(db, 'doctorProfiles'));
     const querySnapshot = await getDocs(q);
-    
+
     console.log('Admin query snapshot size:', querySnapshot.size);
-    const results = querySnapshot.docs.map(doc => ({
+    const results = querySnapshot.docs.map((doc) => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
     }));
     console.log('All doctor profiles found:', results);
     return results;
@@ -155,7 +146,7 @@ export const getAllDoctorProfilesForAdmin = async (): Promise<any[]> => {
 export const getDoctorProfile = async (doctorId: string): Promise<any> => {
   const docRef = doc(db, 'doctorProfiles', doctorId);
   const docSnap = await getDoc(docRef);
-  
+
   if (docSnap.exists()) {
     return { id: docSnap.id, ...docSnap.data() };
   }
@@ -172,8 +163,23 @@ export const getAllRestaurants = async (): Promise<Restaurant[]> => {
 
   return querySnapshot.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data()
+    ...doc.data(),
   })) as Restaurant[];
+};
+
+export const getAllRestaurantsForAdmin = async (): Promise<Restaurant[]> => {
+  try {
+    const restaurantsQuery = query(collection(db, 'restaurants'), orderBy('name', 'asc'));
+    const querySnapshot = await getDocs(restaurantsQuery);
+
+    return querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Restaurant[];
+  } catch (error) {
+    console.error('Error in getAllRestaurantsForAdmin:', error);
+    throw error;
+  }
 };
 
 export const updateUser = async (
@@ -191,10 +197,10 @@ export const createDiet = async (dietData: Omit<Diet, 'id' | 'createdAt'>): Prom
 export const getDiets = async (): Promise<Diet[]> => {
   const q = query(collection(db, 'diets'), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({
+
+  return querySnapshot.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data()
+    ...doc.data(),
   })) as Diet[];
 };
 
@@ -205,10 +211,10 @@ export const getDietsByUser = async (userId: string): Promise<Diet[]> => {
     orderBy('createdAt', 'desc')
   );
   const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({
+
+  return querySnapshot.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data()
+    ...doc.data(),
   })) as Diet[];
 };
 
@@ -224,33 +230,27 @@ export const createConsultation = async (
 };
 
 export const getConsultationsByUser = async (userId: string): Promise<Consultation[]> => {
-  const q = query(
-    collection(db, 'consultations'),
-    where('patientId', '==', userId)
-  );
+  const q = query(collection(db, 'consultations'), where('patientId', '==', userId));
   const querySnapshot = await getDocs(q);
-  
-  const items = querySnapshot.docs.map(doc => ({
+
+  const items = querySnapshot.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data()
+    ...doc.data(),
   })) as Consultation[];
-  
+
   // Sort client-side to avoid composite index requirement
   return items.sort((a, b) => b.timeSlot.toMillis() - a.timeSlot.toMillis());
 };
 
 export const getConsultationsByDoctor = async (doctorId: string): Promise<Consultation[]> => {
-  const q = query(
-    collection(db, 'consultations'),
-    where('doctorId', '==', doctorId)
-  );
+  const q = query(collection(db, 'consultations'), where('doctorId', '==', doctorId));
   const querySnapshot = await getDocs(q);
-  
-  const items = querySnapshot.docs.map(doc => ({
+
+  const items = querySnapshot.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data()
+    ...doc.data(),
   })) as Consultation[];
-  
+
   // Sort client-side to avoid composite index requirement
   return items.sort((a, b) => b.timeSlot.toMillis() - a.timeSlot.toMillis());
 };
@@ -274,10 +274,10 @@ export const getUserProgress = async (userId: string): Promise<Progress[]> => {
     orderBy('date', 'desc')
   );
   const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({
+
+  return querySnapshot.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data()
+    ...doc.data(),
   })) as Progress[];
 };
 
@@ -300,17 +300,14 @@ export const getUserOrders = async (userId: string): Promise<Order[]> => {
     orderBy('createdAt', 'desc')
   );
   const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({
+
+  return querySnapshot.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data()
+    ...doc.data(),
   })) as Order[];
 };
 
-export const updateOrderStatus = async (
-  id: string,
-  status: Order['status']
-): Promise<void> => {
+export const updateOrderStatus = async (id: string, status: Order['status']): Promise<void> => {
   return updateDocument('orders', id, { status });
 };
 
@@ -322,10 +319,10 @@ export const createPost = async (postData: Omit<Post, 'id' | 'createdAt'>): Prom
 export const getPosts = async (): Promise<Post[]> => {
   const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({
+
+  return querySnapshot.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data()
+    ...doc.data(),
   })) as Post[];
 };
 
@@ -342,7 +339,9 @@ export const deletePost = async (id: string): Promise<void> => {
 };
 
 // Comment operations
-export const createComment = async (commentData: Omit<Comment, 'id' | 'createdAt'>): Promise<string> => {
+export const createComment = async (
+  commentData: Omit<Comment, 'id' | 'createdAt'>
+): Promise<string> => {
   return createDocument<Comment>('comments', commentData as any);
 };
 
@@ -353,10 +352,10 @@ export const getPostComments = async (postId: string): Promise<Comment[]> => {
     orderBy('createdAt', 'asc')
   );
   const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({
+
+  return querySnapshot.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data()
+    ...doc.data(),
   })) as Comment[];
 };
 
@@ -372,10 +371,10 @@ export const createExercise = async (exerciseData: Omit<Exercise, 'id'>): Promis
 export const getExercises = async (): Promise<Exercise[]> => {
   const q = query(collection(db, 'exercises'), orderBy('name', 'asc'));
   const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({
+
+  return querySnapshot.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data()
+    ...doc.data(),
   })) as Exercise[];
 };
 
@@ -391,10 +390,10 @@ export const createFood = async (foodData: Omit<Food, 'id'>): Promise<string> =>
 export const getFoods = async (): Promise<Food[]> => {
   const q = query(collection(db, 'foods'), orderBy('name', 'asc'));
   const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({
+
+  return querySnapshot.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data()
+    ...doc.data(),
   })) as Food[];
 };
 
@@ -409,7 +408,7 @@ export const subscribeToCollection = <T>(
   constraints?: { field: string; operator: any; value: any }[]
 ) => {
   let q: any = collection(db, collectionName);
-  
+
   if (constraints) {
     constraints.forEach(({ field, operator, value }) => {
       q = query(q, where(field, operator, value));
@@ -419,7 +418,7 @@ export const subscribeToCollection = <T>(
   return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
     const data = snapshot.docs.map((d) => ({
       id: d.id,
-      ...d.data()
+      ...d.data(),
     })) as T[];
     callback(data);
   });
@@ -431,7 +430,7 @@ export const subscribeToDocument = <T>(
   callback: (data: T | null) => void
 ) => {
   const docRef = doc(db, collectionName, id);
-  
+
   return onSnapshot(docRef, (snapshot) => {
     if (snapshot.exists()) {
       const data = { id: snapshot.id, ...snapshot.data() } as T;
