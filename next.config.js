@@ -7,7 +7,8 @@ const withPWA = require('next-pwa')({
 });
 
 const nextConfig = {
-  // output: 'export', // Disabled to allow API routes for AI Chat
+  output: 'export',
+  trailingSlash: true,
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -30,4 +31,3 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 module.exports = withPWA(nextConfig);
-
