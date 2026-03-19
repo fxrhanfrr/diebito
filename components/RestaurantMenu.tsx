@@ -38,21 +38,7 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
   // Debug the restaurant object
   console.log('RestaurantMenu received restaurant:', restaurant);
 
-  // Prevent body scroll when checkout dialog is open
-  useEffect(() => {
-    if (showCheckout) {
-      document.body.style.overflow = 'hidden';
-      document.body.style.userSelect = 'none';
-    } else {
-      document.body.style.overflow = 'unset';
-      document.body.style.userSelect = 'auto';
-    }
-
-    return () => {
-      document.body.style.overflow = 'unset';
-      document.body.style.userSelect = 'auto';
-    };
-  }, [showCheckout]);
+  // Custom scroll lock removed in favor of Radix UI dialog handling
 
   useEffect(() => {
     const fetchMenuItems = async () => {
@@ -415,106 +401,70 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
       </Dialog>
 
       {/* Checkout Dialog */}
-      {showCheckout && (
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[10000]"
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 10000,
-          }}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (e.target === e.currentTarget) {
-              setShowCheckout(false);
-            }
-          }}
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            style={{
-              position: 'relative',
-              zIndex: 10001,
-            }}
-          >
-            <div className="p-6">
+      <Dialog open={showCheckout} onOpenChange={setShowCheckout}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto z-[10000]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">Checkout</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            <div>
+              <Label className="mb-2 block font-semibold text-gray-700">Full Name</Label>
+              <Input
+                value={checkoutData.name}
+                onChange={(e) => setCheckoutData({ ...checkoutData, name: e.target.value })}
+                placeholder="Enter your full name"
+                className="w-full h-12 text-lg"
+              />
+            </div>
+
+            <div>
+              <Label className="mb-2 block font-semibold text-gray-700">Phone Number</Label>
+              <Input
+                value={checkoutData.phone}
+                onChange={(e) => setCheckoutData({ ...checkoutData, phone: e.target.value })}
+                placeholder="Enter your phone number"
+                className="w-full h-12 text-lg"
+              />
+            </div>
+
+            <div>
+              <Label className="mb-2 block font-semibold text-gray-700">Delivery Address</Label>
+              <Input
+                value={checkoutData.address}
+                onChange={(e) => setCheckoutData({ ...checkoutData, address: e.target.value })}
+                placeholder="Enter your delivery address"
+                className="w-full h-12 text-lg"
+              />
+            </div>
+
+            <div className="border-t border-gray-200 pt-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Checkout</h2>
-                <button
-                  onClick={() => setShowCheckout(false)}
-                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none p-1 hover:bg-gray-100 rounded-full"
-                >
-                  ×
-                </button>
+                <span className="text-xl font-bold text-gray-900">
+                  Total: ₹{getCartTotal().toFixed(2)}
+                </span>
               </div>
 
-              <div className="space-y-6">
-                <div>
-                  <Label className="mb-2 block font-semibold text-gray-700">Full Name</Label>
-                  <Input
-                    value={checkoutData.name}
-                    onChange={(e) => setCheckoutData({ ...checkoutData, name: e.target.value })}
-                    placeholder="Enter your full name"
-                    className="w-full h-12 text-lg"
-                  />
-                </div>
-
-                <div>
-                  <Label className="mb-2 block font-semibold text-gray-700">Phone Number</Label>
-                  <Input
-                    value={checkoutData.phone}
-                    onChange={(e) => setCheckoutData({ ...checkoutData, phone: e.target.value })}
-                    placeholder="Enter your phone number"
-                    className="w-full h-12 text-lg"
-                  />
-                </div>
-
-                <div>
-                  <Label className="mb-2 block font-semibold text-gray-700">Delivery Address</Label>
-                  <Input
-                    value={checkoutData.address}
-                    onChange={(e) => setCheckoutData({ ...checkoutData, address: e.target.value })}
-                    placeholder="Enter your delivery address"
-                    className="w-full h-12 text-lg"
-                  />
-                </div>
-
-                <div className="border-t border-gray-200 pt-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <span className="text-xl font-bold text-gray-900">
-                      Total: ₹{getCartTotal().toFixed(2)}
-                    </span>
-                  </div>
-
-                  <div className="flex gap-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowCheckout(false)}
-                      className="flex-1 h-12 text-lg font-semibold"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={createOrder}
-                      disabled={!checkoutData.name || !checkoutData.phone || !checkoutData.address}
-                      className="flex-1 h-12 text-lg font-semibold bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
-                    >
-                      Place Order
-                    </Button>
-                  </div>
-                </div>
+              <div className="flex gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCheckout(false)}
+                  className="flex-1 h-12 text-lg font-semibold"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={createOrder}
+                  disabled={!checkoutData.name || !checkoutData.phone || !checkoutData.address}
+                  className="flex-1 h-12 text-lg font-semibold bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
+                >
+                  Place Order
+                </Button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
