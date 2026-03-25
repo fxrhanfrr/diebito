@@ -9,12 +9,24 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AuthGuard from '@/components/AuthGuard';
 import { useEffect, useRef } from 'react';
+import { useUser } from '@/hooks/useUser';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 export default function AIAssistant() {
+  const { user } = useUser();
   const { messages, input, handleInputChange, handleSubmit, isLoading, append } = useChat({
     api: '/api/chat',
+    body: {
+      userProfile: user
+        ? {
+            name: user.name,
+            age: user.age,
+            weight: user.weight,
+            diabetesType: user.diabetesType,
+          }
+        : null,
+    },
     onError: (error) => {
       console.error('Chat error:', error);
       try {
@@ -41,12 +53,34 @@ export default function AIAssistant() {
     }
   }, [messages]);
 
-  const suggestedQuestions = [
-    'Plan a 1500 calorie diabetic-friendly diet',
-    'Is it safe for me to eat bananas?',
-    'Suggest a low-carb snack',
-    'Explain Type 2 diabetes simply',
-  ];
+  const suggestedQuestions =
+    user?.diabetesType === 'Type 1 Diabetes'
+      ? [
+          'How to manage insulin levels?',
+          'What are good snacks for Type 1 diabetes?',
+          'How does exercise affect my blood sugar?',
+          'Plan a balanced meal for me',
+        ]
+      : user?.diabetesType === 'Type 2 Diabetes'
+        ? [
+            'Plan a 1500 calorie diabetic-friendly diet',
+            'How to lower morning blood sugar?',
+            'Suggest a low-carb snack',
+            'Explain Type 2 diabetes simply',
+          ]
+        : user?.diabetesType === 'Gestational Diabetes'
+          ? [
+              'Pregnancy-safe meals for gestational diabetes',
+              'How to manage blood sugar during pregnancy?',
+              'Safe exercises for gestational diabetes',
+              "Snack ideas that won't spike blood sugar",
+            ]
+          : [
+              'Plan a healthy balanced diet',
+              'Is it safe for me to eat bananas?',
+              'Suggest a healthy low-sugar snack',
+              'What are early signs of diabetes?',
+            ];
 
   return (
     <AuthGuard>

@@ -8,11 +8,31 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
 import {
@@ -34,7 +54,7 @@ import {
   AlertCircle,
   Droplets,
   Plus,
-  Trash2
+  Trash2,
 } from 'lucide-react';
 import { getConsultationsByDoctor, getDiets, getUserProgress, getUser } from '@/lib/firestore';
 import { Consultation, Diet, Progress as ProgressType, User as UserType } from '@/lib/types';
@@ -44,9 +64,8 @@ const diabetesTypes = [
   'Type 2 Diabetes',
   'Gestational Diabetes',
   'Prediabetes',
-  'Other'
+  'Other',
 ];
-
 
 interface BloodSugarReading {
   value: number;
@@ -62,7 +81,7 @@ export default function Dashboard() {
     name: '',
     age: '',
     weight: '',
-    diabetesType: '' as string
+    diabetesType: '' as string,
   });
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>('patient');
@@ -89,7 +108,11 @@ export default function Dashboard() {
   const addBloodSugarReading = () => {
     const val = parseFloat(newSugarValue);
     if (isNaN(val) || val <= 0) return;
-    const reading: BloodSugarReading = { value: val, time: new Date().toLocaleString(), label: newSugarLabel };
+    const reading: BloodSugarReading = {
+      value: val,
+      time: new Date().toLocaleString(),
+      label: newSugarLabel,
+    };
     const updated = [reading, ...bloodSugarReadings].slice(0, 10);
     setBloodSugarReadings(updated);
     localStorage.setItem('bloodSugarReadings', JSON.stringify(updated));
@@ -106,7 +129,8 @@ export default function Dashboard() {
     if (label === 'fasting') {
       if (value < 70) return { color: 'text-blue-600', bg: 'bg-blue-50', status: 'Low' };
       if (value <= 99) return { color: 'text-green-600', bg: 'bg-green-50', status: 'Normal' };
-      if (value <= 125) return { color: 'text-yellow-600', bg: 'bg-yellow-50', status: 'Pre-diabetic' };
+      if (value <= 125)
+        return { color: 'text-yellow-600', bg: 'bg-yellow-50', status: 'Pre-diabetic' };
       return { color: 'text-red-600', bg: 'bg-red-50', status: 'High' };
     }
     if (value < 70) return { color: 'text-blue-600', bg: 'bg-blue-50', status: 'Low' };
@@ -119,6 +143,7 @@ export default function Dashboard() {
     if (user?.role === 'doctor') {
       loadDoctorData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Handle role assignment and role-based redirects
@@ -159,10 +184,12 @@ export default function Dashboard() {
         return acc;
       }, [] as string[]);
       const names: { [key: string]: string } = {};
-      await Promise.all(uniquePatientIds.map(async (id) => {
-        const patient = await getUser(id);
-        names[id] = patient?.name ?? `Patient (${id.slice(0, 6)}...)`;
-      }));
+      await Promise.all(
+        uniquePatientIds.map(async (id) => {
+          const patient = await getUser(id);
+          names[id] = patient?.name ?? `Patient (${id.slice(0, 6)}...)`;
+        })
+      );
       setPatientNames(names);
 
       const dietsData = await getDiets();
@@ -195,47 +222,64 @@ export default function Dashboard() {
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'admin': return 'bg-red-100 text-red-800';
-      case 'doctor': return 'bg-blue-100 text-blue-800';
-      case 'patient': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'admin':
+        return 'bg-red-100 text-red-800';
+      case 'doctor':
+        return 'bg-blue-100 text-blue-800';
+      case 'patient':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case 'admin': return 'Administrator';
-      case 'doctor': return 'Doctor';
-      case 'patient': return 'Patient';
-      case 'restaurant_owner': return 'Restaurant Owner';
-      default: return role;
+      case 'admin':
+        return 'Administrator';
+      case 'doctor':
+        return 'Doctor';
+      case 'patient':
+        return 'Patient';
+      case 'restaurant_owner':
+        return 'Restaurant Owner';
+      default:
+        return role;
     }
   };
 
   const getConsultationStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed': return 'bg-blue-100 text-blue-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'confirmed':
+        return 'bg-blue-100 text-blue-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getConsultationStatusIcon = (status: string) => {
     switch (status) {
-      case 'pending': return <Clock className="h-4 w-4" />;
-      case 'confirmed': return <CheckCircle className="h-4 w-4" />;
-      case 'completed': return <CheckCircle className="h-4 w-4" />;
-      default: return <AlertCircle className="h-4 w-4" />;
+      case 'pending':
+        return <Clock className="h-4 w-4" />;
+      case 'confirmed':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'completed':
+        return <CheckCircle className="h-4 w-4" />;
+      default:
+        return <AlertCircle className="h-4 w-4" />;
     }
   };
 
   const startEditingProfile = () => {
     setEditFormData({
-      name: user.name,
-      age: user.age.toString(),
-      weight: user.weight.toString(),
-      diabetesType: user.diabetesType || ''
+      name: user.name || '',
+      age: user.age?.toString() ?? '',
+      weight: user.weight?.toString() ?? '',
+      diabetesType: user.diabetesType || '',
     });
     setSelectedRole(user.role);
     setIsEditingProfile(true);
@@ -247,7 +291,7 @@ export default function Dashboard() {
       name: '',
       age: '',
       weight: '',
-      diabetesType: ''
+      diabetesType: '',
     });
   };
 
@@ -270,7 +314,9 @@ export default function Dashboard() {
         weight: parseFloat(editFormData.weight),
         diabetesType: editFormData.diabetesType,
         role: selectedRole as any,
-        ...(selectedRole === 'admin' && user.role !== 'admin' ? { adminCode: adminCode.trim() } : {})
+        ...(selectedRole === 'admin' && user.role !== 'admin'
+          ? { adminCode: adminCode.trim() }
+          : {}),
       } as any);
       setIsProfileDialogOpen(false);
     } catch (error) {
@@ -285,43 +331,43 @@ export default function Dashboard() {
       description: 'View and manage your personalized diet plans',
       icon: Utensils,
       href: '/diets',
-      color: 'bg-green-500'
+      color: 'bg-green-500',
     },
     {
       title: 'Exercise Tracking',
       description: 'Track your exercise progress and routines',
       icon: Activity,
       href: '/exercises',
-      color: 'bg-blue-500'
+      color: 'bg-blue-500',
     },
     {
       title: 'Consultations',
       description: 'Book and manage doctor consultations',
       icon: Calendar,
       href: '/consultations',
-      color: 'bg-purple-500'
+      color: 'bg-purple-500',
     },
     {
       title: 'Food Ordering',
       description: 'Order healthy meals and snacks',
       icon: ShoppingCart,
       href: '/food-ordering',
-      color: 'bg-orange-500'
+      color: 'bg-orange-500',
     },
     {
       title: 'Progress Tracking',
       description: 'Monitor your health and fitness progress',
       icon: TrendingUp,
       href: '/progress',
-      color: 'bg-indigo-500'
+      color: 'bg-indigo-500',
     },
     {
       title: 'Community',
       description: 'Connect with other patients and share experiences',
       icon: MessageSquare,
       href: '/community',
-      color: 'bg-pink-500'
-    }
+      color: 'bg-pink-500',
+    },
   ];
 
   const doctorFeatures = [
@@ -330,29 +376,29 @@ export default function Dashboard() {
       description: 'Manage patient appointments and consultations',
       icon: Calendar,
       href: '/consultations',
-      color: 'bg-blue-500'
+      color: 'bg-blue-500',
     },
     {
       title: 'Patient Management',
       description: 'View and manage patient information',
       icon: User,
       href: '/patients',
-      color: 'bg-green-500'
+      color: 'bg-green-500',
     },
     {
       title: 'Diet Recommendations',
       description: 'Create and assign diet plans to patients',
       icon: Utensils,
       href: '/diets',
-      color: 'bg-purple-500'
+      color: 'bg-purple-500',
     },
     {
       title: 'Exercise Plans',
       description: 'Design exercise routines for patients',
       icon: Activity,
       href: '/exercises',
-      color: 'bg-orange-500'
-    }
+      color: 'bg-orange-500',
+    },
   ];
 
   const adminFeatures = [
@@ -361,27 +407,30 @@ export default function Dashboard() {
       description: 'Manage all users and their roles',
       icon: User,
       href: '/admin/users',
-      color: 'bg-red-500'
+      color: 'bg-red-500',
     },
     {
       title: 'System Overview',
       description: 'View system statistics and analytics',
       icon: TrendingUp,
       href: '/admin/overview',
-      color: 'bg-blue-500'
+      color: 'bg-blue-500',
     },
     {
       title: 'Content Management',
       description: 'Manage posts, exercises, and food items',
       icon: MessageSquare,
       href: '/admin/content',
-      color: 'bg-green-500'
-    }
+      color: 'bg-green-500',
+    },
   ];
 
-  const features = user.role === 'admin' ? adminFeatures :
-    user.role === 'doctor' ? doctorFeatures :
-      patientFeatures;
+  const features =
+    user.role === 'admin'
+      ? adminFeatures
+      : user.role === 'doctor'
+        ? doctorFeatures
+        : patientFeatures;
 
   // Doctor Dashboard Content
   if (user.role === 'doctor') {
@@ -395,19 +444,11 @@ export default function Dashboard() {
                 <h1 className="text-3xl font-bold text-gray-900">
                   Doctor Dashboard - Dr. {user.name}
                 </h1>
-                <p className="mt-2 text-gray-600">
-                  Monitor your patients and manage consultations
-                </p>
+                <p className="mt-2 text-gray-600">Monitor your patients and manage consultations</p>
               </div>
               <div className="flex items-center space-x-4">
-                <Badge className={getRoleColor(user.role)}>
-                  {getRoleLabel(user.role)}
-                </Badge>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsProfileDialogOpen(true)}
-                >
+                <Badge className={getRoleColor(user.role)}>{getRoleLabel(user.role)}</Badge>
+                <Button variant="outline" size="sm" onClick={() => setIsProfileDialogOpen(true)}>
                   <Edit className="w-4 h-4 mr-2" />
                   Edit Profile
                 </Button>
@@ -424,10 +465,12 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {loadingDoctorData ? '...' : consultations.reduce((acc, c) => {
-                    if (!acc.includes(c.patientId)) acc.push(c.patientId);
-                    return acc;
-                  }, [] as string[]).length}
+                  {loadingDoctorData
+                    ? '...'
+                    : consultations.reduce((acc, c) => {
+                        if (!acc.includes(c.patientId)) acc.push(c.patientId);
+                        return acc;
+                      }, [] as string[]).length}
                 </div>
               </CardContent>
             </Card>
@@ -439,23 +482,27 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {loadingDoctorData ? '...' : consultations.filter(c => c.status === 'pending').length}
+                  {loadingDoctorData
+                    ? '...'
+                    : consultations.filter((c) => c.status === 'pending').length}
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Today's Appointments</CardTitle>
+                <CardTitle className="text-sm font-medium">Today&apos;s Appointments</CardTitle>
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {loadingDoctorData ? '...' : consultations.filter(c => {
-                    const today = new Date();
-                    const appointmentDate = c.timeSlot.toDate();
-                    return appointmentDate.toDateString() === today.toDateString();
-                  }).length}
+                  {loadingDoctorData
+                    ? '...'
+                    : consultations.filter((c) => {
+                        const today = new Date();
+                        const appointmentDate = c.timeSlot.toDate();
+                        return appointmentDate.toDateString() === today.toDateString();
+                      }).length}
                 </div>
               </CardContent>
             </Card>
@@ -510,11 +557,10 @@ export default function Dashboard() {
                       {consultations.slice(0, 5).map((consultation) => (
                         <TableRow key={consultation.id}>
                           <TableCell className="font-medium">
-                            {patientNames[consultation.patientId] ?? `Patient (${consultation.patientId.slice(0, 6)}...)`}
+                            {patientNames[consultation.patientId] ??
+                              `Patient (${consultation.patientId.slice(0, 6)}...)`}
                           </TableCell>
-                          <TableCell>
-                            {consultation.timeSlot.toDate().toLocaleString()}
-                          </TableCell>
+                          <TableCell>{consultation.timeSlot.toDate().toLocaleString()}</TableCell>
                           <TableCell>
                             <Badge className={getConsultationStatusColor(consultation.status)}>
                               {getConsultationStatusIcon(consultation.status)}
@@ -550,7 +596,7 @@ export default function Dashboard() {
                 Patient Diet Plans Overview
               </CardTitle>
               <CardDescription>
-                Monitor your patients' diet plans and nutrition progress
+                Monitor your patients&apos; diet plans and nutrition progress
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -608,7 +654,7 @@ export default function Dashboard() {
                 Patient Progress Overview
               </CardTitle>
               <CardDescription>
-                Track your patients' exercise and health progress
+                Track your patients&apos; exercise and health progress
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -624,38 +670,43 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {Object.entries(patientProgress).slice(0, 3).map(([patientId, progress]) => (
-                    <Card key={patientId} className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-medium">Patient {patientId.slice(0, 8)}...</h4>
-                        <Badge variant="outline">
-                          {progress.length} activities
-                        </Badge>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Completed:</span>
-                          <span className="font-medium">
-                            {progress.filter(p => p.status === 'completed').length}
-                          </span>
+                  {Object.entries(patientProgress)
+                    .slice(0, 3)
+                    .map(([patientId, progress]) => (
+                      <Card key={patientId} className="p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium">Patient {patientId.slice(0, 8)}...</h4>
+                          <Badge variant="outline">{progress.length} activities</Badge>
                         </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Skipped:</span>
-                          <span className="font-medium">
-                            {progress.filter(p => p.status === 'skipped').length}
-                          </span>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Completed:</span>
+                            <span className="font-medium">
+                              {progress.filter((p) => p.status === 'completed').length}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Skipped:</span>
+                            <span className="font-medium">
+                              {progress.filter((p) => p.status === 'skipped').length}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Completion Rate:</span>
+                            <span className="font-medium">
+                              {progress.length > 0
+                                ? Math.round(
+                                    (progress.filter((p) => p.status === 'completed').length /
+                                      progress.length) *
+                                      100
+                                  )
+                                : 0}
+                              %
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Completion Rate:</span>
-                          <span className="font-medium">
-                            {progress.length > 0
-                              ? Math.round((progress.filter(p => p.status === 'completed').length / progress.length) * 100)
-                              : 0}%
-                          </span>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
+                      </Card>
+                    ))}
                 </div>
               )}
             </CardContent>
@@ -691,9 +742,7 @@ export default function Dashboard() {
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Edit Profile</DialogTitle>
-              <DialogDescription>
-                Update your personal and health information
-              </DialogDescription>
+              <DialogDescription>Update your personal and health information</DialogDescription>
             </DialogHeader>
 
             <div className="space-y-6">
@@ -703,7 +752,7 @@ export default function Dashboard() {
                   id="edit-name"
                   type="text"
                   value={editFormData.name}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) => setEditFormData((prev) => ({ ...prev, name: e.target.value }))}
                   placeholder="Enter your full name"
                 />
               </div>
@@ -715,7 +764,7 @@ export default function Dashboard() {
                     id="edit-age"
                     type="number"
                     value={editFormData.age}
-                    onChange={(e) => setEditFormData(prev => ({ ...prev, age: e.target.value }))}
+                    onChange={(e) => setEditFormData((prev) => ({ ...prev, age: e.target.value }))}
                     placeholder="Enter your age"
                     min="1"
                     max="120"
@@ -728,7 +777,9 @@ export default function Dashboard() {
                     id="edit-weight"
                     type="number"
                     value={editFormData.weight}
-                    onChange={(e) => setEditFormData(prev => ({ ...prev, weight: e.target.value }))}
+                    onChange={(e) =>
+                      setEditFormData((prev) => ({ ...prev, weight: e.target.value }))
+                    }
                     placeholder="Enter your weight in kg"
                     min="20"
                     max="300"
@@ -741,7 +792,9 @@ export default function Dashboard() {
                 <Label htmlFor="edit-diabetesType">Diabetes Type</Label>
                 <Select
                   value={editFormData.diabetesType}
-                  onValueChange={(value) => setEditFormData(prev => ({ ...prev, diabetesType: value }))}
+                  onValueChange={(value) =>
+                    setEditFormData((prev) => ({ ...prev, diabetesType: value }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select diabetes type" />
@@ -780,22 +833,14 @@ export default function Dashboard() {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Welcome back, {user.name}!
-              </h1>
+              <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user.name}!</h1>
               <p className="mt-2 text-gray-600">
-                Here's what's happening with your diabetes management
+                Here&apos;s what&apos;s happening with your diabetes management
               </p>
             </div>
             <div className="flex items-center space-x-4">
-              <Badge className={getRoleColor(user.role)}>
-                {getRoleLabel(user.role)}
-              </Badge>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsProfileDialogOpen(true)}
-              >
+              <Badge className={getRoleColor(user.role)}>{getRoleLabel(user.role)}</Badge>
+              <Button variant="outline" size="sm" onClick={() => setIsProfileDialogOpen(true)}>
                 <Edit className="w-4 h-4 mr-2" />
                 Edit Profile
               </Button>
@@ -810,9 +855,7 @@ export default function Dashboard() {
               <User className="w-5 h-5 mr-2" />
               Profile Information
             </CardTitle>
-            <CardDescription>
-              Your personal and health information
-            </CardDescription>
+            <CardDescription>Your personal and health information</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -920,7 +963,10 @@ export default function Dashboard() {
                   onChange={(e) => setNewSugarValue(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addBloodSugarReading()}
                 />
-                <Select value={newSugarLabel} onValueChange={(v) => setNewSugarLabel(v as BloodSugarReading['label'])}>
+                <Select
+                  value={newSugarLabel}
+                  onValueChange={(v) => setNewSugarLabel(v as BloodSugarReading['label'])}
+                >
                   <SelectTrigger className="w-40">
                     <SelectValue />
                   </SelectTrigger>
@@ -931,15 +977,26 @@ export default function Dashboard() {
                     <SelectItem value="random">Random</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button onClick={addBloodSugarReading} className="bg-red-600 hover:bg-red-700 text-white">
+                <Button
+                  onClick={addBloodSugarReading}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
                   <Plus className="w-4 h-4 mr-1" /> Log Reading
                 </Button>
               </div>
               <div className="flex flex-wrap gap-2 mb-4 text-xs">
-                <span className="px-2 py-1 bg-green-50 text-green-700 rounded-full font-medium">Normal fasting: 70–99</span>
-                <span className="px-2 py-1 bg-yellow-50 text-yellow-700 rounded-full font-medium">Pre-diabetic: 100–125</span>
-                <span className="px-2 py-1 bg-red-50 text-red-700 rounded-full font-medium">Diabetic: 126+</span>
-                <span className="px-2 py-1 bg-green-50 text-green-700 rounded-full font-medium">Normal post-meal: &lt;140</span>
+                <span className="px-2 py-1 bg-green-50 text-green-700 rounded-full font-medium">
+                  Normal fasting: 70–99
+                </span>
+                <span className="px-2 py-1 bg-yellow-50 text-yellow-700 rounded-full font-medium">
+                  Pre-diabetic: 100–125
+                </span>
+                <span className="px-2 py-1 bg-red-50 text-red-700 rounded-full font-medium">
+                  Diabetic: 126+
+                </span>
+                <span className="px-2 py-1 bg-green-50 text-green-700 rounded-full font-medium">
+                  Normal post-meal: &lt;140
+                </span>
               </div>
               {bloodSugarReadings.length === 0 ? (
                 <div className="text-center py-6 text-gray-400">
@@ -951,17 +1008,29 @@ export default function Dashboard() {
                   {bloodSugarReadings.map((r, i) => {
                     const s = getBloodSugarStatus(r.value, r.label);
                     return (
-                      <div key={i} className={`flex items-center justify-between p-3 rounded-lg ${s.bg}`}>
+                      <div
+                        key={i}
+                        className={`flex items-center justify-between p-3 rounded-lg ${s.bg}`}
+                      >
                         <div className="flex items-center gap-3">
-                          <span className={`text-xl font-bold ${s.color}`}>{r.value} <span className="text-sm font-normal">mg/dL</span></span>
+                          <span className={`text-xl font-bold ${s.color}`}>
+                            {r.value} <span className="text-sm font-normal">mg/dL</span>
+                          </span>
                           <div>
-                            <Badge variant="outline" className="text-xs capitalize">{r.label.replace('-', ' ')}</Badge>
-                            <span className={`ml-2 text-xs font-semibold ${s.color}`}>{s.status}</span>
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {r.label.replace('-', ' ')}
+                            </Badge>
+                            <span className={`ml-2 text-xs font-semibold ${s.color}`}>
+                              {s.status}
+                            </span>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-xs text-gray-500">{r.time}</span>
-                          <button onClick={() => removeBloodSugarReading(i)} className="text-gray-400 hover:text-red-500 transition-colors">
+                          <button
+                            onClick={() => removeBloodSugarReading(i)}
+                            className="text-gray-400 hover:text-red-500 transition-colors"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -1018,9 +1087,7 @@ export default function Dashboard() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
-            <DialogDescription>
-              Update your personal and health information
-            </DialogDescription>
+            <DialogDescription>Update your personal and health information</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6">
@@ -1057,7 +1124,7 @@ export default function Dashboard() {
                 id="edit-name"
                 type="text"
                 value={editFormData.name}
-                onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => setEditFormData((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="Enter your full name"
               />
             </div>
@@ -1069,7 +1136,7 @@ export default function Dashboard() {
                   id="edit-age"
                   type="number"
                   value={editFormData.age}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, age: e.target.value }))}
+                  onChange={(e) => setEditFormData((prev) => ({ ...prev, age: e.target.value }))}
                   placeholder="Enter your age"
                   min="1"
                   max="120"
@@ -1082,7 +1149,7 @@ export default function Dashboard() {
                   id="edit-weight"
                   type="number"
                   value={editFormData.weight}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, weight: e.target.value }))}
+                  onChange={(e) => setEditFormData((prev) => ({ ...prev, weight: e.target.value }))}
                   placeholder="Enter your weight in kg"
                   min="20"
                   max="300"
@@ -1095,7 +1162,9 @@ export default function Dashboard() {
               <Label htmlFor="edit-diabetesType">Diabetes Type</Label>
               <Select
                 value={editFormData.diabetesType}
-                onValueChange={(value) => setEditFormData(prev => ({ ...prev, diabetesType: value }))}
+                onValueChange={(value) =>
+                  setEditFormData((prev) => ({ ...prev, diabetesType: value }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select diabetes type" />
