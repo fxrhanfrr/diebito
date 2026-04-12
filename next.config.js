@@ -7,13 +7,11 @@ const withPWA = require('next-pwa')({
 });
 
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
   images: { unoptimized: true },
+  turbopack: {},
 };
 
 // Setup Cloudflare dev platform in development

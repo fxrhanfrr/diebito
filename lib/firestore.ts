@@ -3,6 +3,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  setDoc,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -440,3 +441,50 @@ export const subscribeToDocument = <T>(
     }
   });
 };
+
+// AI Chat operations
+export const getAIChatSessions = async (userId: string): Promise<any[]> => {
+  const q = query(
+    collection(db, `userChats/${userId}/sessions`),
+    orderBy('updatedAt', 'desc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+export const createAIChatSession = async (userId: string, title: string = 'New Chat'): Promise<string> => {
+  const docRef = await addDoc(collection(db, `userChats/${userId}/sessions`), {
+    userId,
+    title,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+    messages: []
+  });
+  return docRef.id;
+};
+
+export const getAIChatHistory = async (userId: string, sessionId: string): Promise<any[]> => {
+  const docRef = doc(db, `userChats/${userId}/sessions`, sessionId);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return docSnap.data().messages || [];
+  }
+  return [];
+};
+
+export const saveAIChatHistory = async (userId: string, messages: any[], sessionId: string, title?: string): Promise<void> => {
+  const docRef = doc(db, `userChats/${userId}/sessions`, sessionId);
+  const cleanMessages = JSON.parse(JSON.stringify(messages));
+  
+  const updateData: any = { 
+    messages: cleanMessages, 
+    updatedAt: Timestamp.now() 
+  };
+  
+  if (title) {
+    updateData.title = title;
+  }
+  
+  await setDoc(docRef, updateData, { merge: true });
+};
+

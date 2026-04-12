@@ -66,6 +66,20 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     
+    // User AI Chats collection rules
+    match /userChats/{userId} {
+      // Allow users to read and write their own chat history
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      // Allow admins to read chat histories
+      allow read: if isAdmin();
+      
+      // Allow access to the sessions subcollection
+      match /sessions/{sessionId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+        allow read: if isAdmin();
+      }
+    }
+    
     // Restaurants collection rules
     match /restaurants/{restaurantId} {
       // Allow owners to read their own restaurant doc by ID (even if not created yet)
