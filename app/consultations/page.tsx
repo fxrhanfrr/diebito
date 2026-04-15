@@ -149,12 +149,39 @@ export default function Consultations() {
     try {
       setLoading(true);
 
+      const targetTime = Timestamp.fromDate(new Date(`${bookingData.date}T${bookingData.time}`));
+
+      // Prevent overlapping bookings
+      const overlapQuery = query(
+        collection(db, 'consultations'),
+        where('doctorId', '==', selectedDoctor.id),
+        where('timeSlot', '==', targetTime)
+      );
+      
+      const overlapSnapshot = await getDocs(overlapQuery);
+      const isAlreadyBooked = overlapSnapshot.docs.some((doc) => {
+        return doc.data().status !== 'cancelled';
+      });
+
+      if (isAlreadyBooked) {
+        alert('This time slot is already booked by another patient! Please select a different time.');
+        setLoading(false);
+        return;
+      }
+
       const consultationData = {
         doctorId: selectedDoctor.id,
         patientId: profile.id,
-        timeSlot: Timestamp.fromDate(new Date(`${bookingData.date}T${bookingData.time}`)),
+        timeSlot: targetTime,
         status: 'pending' as const,
-        prescriptionLink: ''
+        type: bookingData.type,
+        date: bookingData.date,
+        time: bookingData.time,
+        notes: bookingData.notes || '',
+        prescription: '',
+        prescriptionLink: '',
+        patientName: profile.name || 'Patient',
+        patientEmail: profile.email || 'No email provided'
       };
 
       await createConsultation(consultationData);
@@ -192,7 +219,7 @@ export default function Consultations() {
     }
   };
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = (type?: string) => {
     switch (type) {
       case 'video': return <Video className="h-4 w-4" />;
       case 'phone': return <Phone className="h-4 w-4" />;
@@ -210,7 +237,7 @@ export default function Consultations() {
     );
   };
 
-  const handleStatusChange = (id: string, status: string) => {
+  const handleStatusChange = (id: string, status: Consultation['status']) => {
     setDoctorConsultations(prev =>
       prev.map(consultation =>
         consultation.id === id
@@ -218,6 +245,14 @@ export default function Consultations() {
           : consultation
       )
     );
+  };
+
+  const generateGoogleCalendarLink = (title: string, date: Date) => {
+    const startDate = date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const endDateObj = new Date(date.getTime() + 30 * 60 * 1000); // 30 mins later
+    const endDate = endDateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${startDate}/${endDate}&details=${encodeURIComponent('Medical Consultation booked via Diabeto Maestro.')}`;
   };
 
   // Show different content based on user role
@@ -253,11 +288,11 @@ export default function Consultations() {
                                 <div className="flex items-center gap-4 text-sm text-gray-600">
                                   <div className="flex items-center gap-1">
                                     <Calendar className="h-4 w-4" />
-                                    {new Date(consultation.date).toLocaleDateString()}
+                                    {consultation.date ? new Date(consultation.date).toLocaleDateString() : consultation.timeSlot.toDate().toLocaleDateString()}
                                   </div>
                                   <div className="flex items-center gap-1">
                                     <Clock className="h-4 w-4" />
-                                    {consultation.time}
+                                    {consultation.time || consultation.timeSlot.toDate().toLocaleTimeString()}
                                   </div>
                                 </div>
                               </div>
@@ -282,6 +317,14 @@ export default function Consultations() {
                                   >
                                     <XCircle className="h-4 w-4 mr-1" />
                                     Cancel
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => window.open(generateGoogleCalendarLink(`Consultation with ${consultation.patientName || 'Patient'}`, consultation.date ? new Date(consultation.date) : new Date()), '_blank')}
+                                  >
+                                    <Calendar className="h-4 w-4 mr-1" />
+                                    Add to Calendar
                                   </Button>
                                 </div>
                               )}
@@ -616,6 +659,14 @@ export default function Consultations() {
                                 </Button>
                                 <Button size="sm">
                                   Join Call
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="secondary"
+                                  onClick={() => window.open(generateGoogleCalendarLink(`Consultation with Dr. ${doctorsMap.get(consultation.doctorId)?.name || 'Doctor'}`, consultation.timeSlot.toDate()), '_blank')}
+                                >
+                                  <Calendar className="h-4 w-4 mr-1" />
+                                  Add to Calendar
                                 </Button>
                               </div>
                             )}

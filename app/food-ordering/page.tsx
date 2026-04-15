@@ -30,6 +30,8 @@ import {
   User,
 } from 'lucide-react';
 import RestaurantMenu from '@/components/RestaurantMenu';
+import LocationPicker from '@/components/LocationPicker';
+import { calculateDistance } from '@/lib/utils';
 
 export default function FoodOrdering() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,6 +42,9 @@ export default function FoodOrdering() {
   const [foodsMap, setFoodsMap] = useState<Map<string, any>>(new Map());
   const [usersMap, setUsersMap] = useState<Map<string, any>>(new Map());
   const { profile } = useAuth();
+  
+  // Track user location
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number, address: string} | null>(null);
 
   const fetchOrderRelatedData = async (orders: Order[]) => {
     try {
@@ -171,7 +176,14 @@ export default function FoodOrdering() {
       restaurant.specialties.some((specialty) =>
         specialty.toLowerCase().includes(searchTerm.toLowerCase())
       );
-    return matchesSearch;
+      
+    let isWithinRange = true;
+    if (userLocation && restaurant.lat && restaurant.lng) {
+      const distance = calculateDistance(userLocation.lat, userLocation.lng, restaurant.lat, restaurant.lng);
+      isWithinRange = distance <= restaurant.deliveryRadius;
+    }
+      
+    return matchesSearch && isWithinRange;
   });
 
   // Load orders for restaurant owners
@@ -433,13 +445,19 @@ export default function FoodOrdering() {
             )}
           </div>
 
-          {/* Search */}
-          <div className="mb-10">
-            <div className="max-w-[700px] mx-auto">
+          {/* Search and Location */}
+          <div className="mb-10 space-y-4">
+            <div className="max-w-[700px] mx-auto z-50">
+              <LocationPicker 
+                onLocationSelect={(loc) => setUserLocation(loc)} 
+                placeholder="Enter your delivery location..."
+              />
+            </div>
+            <div className="max-w-[700px] mx-auto z-40 relative">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search for food or restaurants..."
+                  placeholder="Search for food or restaurants by name..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"

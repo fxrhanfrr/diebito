@@ -27,6 +27,7 @@ export default function Navbar() {
         return [
           ...baseItems,
           { href: '/admin', label: 'Admin Panel' },
+          { href: '/payouts', label: 'Payout Dashboard' },
           { href: '/consultations', label: 'Manage Doctors' },
           { href: '/food-ordering', label: 'Manage Restaurants' },
           { href: '/ai-assistant', label: 'AI Assistant' },
@@ -37,6 +38,7 @@ export default function Navbar() {
           { href: '/doctor-setup', label: 'My Profile' },
           { href: '/consultations', label: 'My Consultations' },
           { href: '/patients', label: 'My Patients' },
+          { href: '/payouts', label: 'Earnings & Payouts' },
           { href: '/ai-assistant', label: 'AI Assistant' },
         ];
       case 'restaurant_owner':
@@ -44,6 +46,7 @@ export default function Navbar() {
           ...baseItems,
           { href: '/restaurant-setup', label: 'My Restaurant' },
           { href: '/food-ordering', label: 'Orders' },
+          { href: '/payouts', label: 'Earnings & Payouts' },
         ];
       case 'patient':
       default:

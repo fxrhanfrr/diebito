@@ -32,8 +32,16 @@ export interface Consultation {
   doctorId: string;
   patientId: string;
   timeSlot: Timestamp;
-  status: 'pending' | 'confirmed' | 'completed';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  isPaid?: boolean;
   prescriptionLink: string;
+  type?: 'video' | 'phone' | 'in-person';
+  patientName?: string;
+  patientEmail?: string;
+  date?: string;
+  time?: string;
+  notes?: string;
+  prescription?: string;
   createdAt: Timestamp;
 }
 
@@ -57,6 +65,7 @@ export interface Order {
   items: FoodItem[];
   total: number;
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  isPaid?: boolean;
   deliveryInfo: string;
   contactName?: string;
   contactPhone?: string;
@@ -110,6 +119,8 @@ export interface Restaurant {
   name: string;
   description: string;
   address: string;
+  lat?: number;
+  lng?: number;
   phone: string;
   email: string;
   ownerId: string; // Reference to the restaurant owner user

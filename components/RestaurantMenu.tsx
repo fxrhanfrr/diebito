@@ -14,8 +14,9 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Plus, Minus, ShoppingCart, Clock, Star } from 'lucide-react';
+import { Search, Plus, Minus, ShoppingCart, Clock, Star, MapPin } from 'lucide-react';
 import { addDoc, collection, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
+import LocationPicker from '@/components/LocationPicker';
 import { db } from '@/lib/firebase';
 import { Restaurant, Food } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
@@ -33,7 +34,15 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
   const [showCart, setShowCart] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [showCheckout, setShowCheckout] = useState(false);
-  const [checkoutData, setCheckoutData] = useState({ name: '', phone: '', address: '' });
+  const [checkoutData, setCheckoutData] = useState({ 
+    name: '', 
+    phone: '', 
+    houseNo: '',
+    street: '',
+    area: '',
+    landmark: '',
+    locality: '' 
+  });
 
   // Debug the restaurant object
   console.log('RestaurantMenu received restaurant:', restaurant);
@@ -209,7 +218,7 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
       alert('Please log in to place an order.');
       return;
     }
-    if (!checkoutData.name || !checkoutData.phone || !checkoutData.address) return;
+    if (!checkoutData.name || !checkoutData.phone || !checkoutData.locality || !checkoutData.houseNo || !checkoutData.area) return;
 
     const items = Object.entries(cart).map(([foodId, qty]) => ({ foodId, qty }));
     const totalPrice = getCartTotal();
@@ -221,7 +230,7 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
         items,
         total: totalPrice,
         status: 'pending',
-        deliveryInfo: checkoutData.address,
+        deliveryInfo: `${checkoutData.houseNo}, ${checkoutData.street ? checkoutData.street + ', ' : ''}${checkoutData.area}, ${checkoutData.landmark ? checkoutData.landmark + ', ' : ''}${checkoutData.locality}`,
         contactName: checkoutData.name,
         contactPhone: checkoutData.phone,
         createdAt: serverTimestamp(),
@@ -429,13 +438,56 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
             </div>
 
             <div>
-              <Label className="mb-2 block font-semibold text-gray-700">Delivery Address</Label>
-              <Input
-                value={checkoutData.address}
-                onChange={(e) => setCheckoutData({ ...checkoutData, address: e.target.value })}
-                placeholder="Enter your delivery address"
-                className="w-full h-12 text-lg"
-              />
+              <Label className="mb-2 block font-semibold text-gray-700">City / Full Locality *</Label>
+              <div className="relative z-[10005]">
+                <LocationPicker 
+                  onLocationSelect={(loc) => setCheckoutData({ ...checkoutData, locality: loc.address })}
+                  placeholder="E.g., Thane West, Mumbai"
+                  defaultAddress={checkoutData.locality}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="mb-2 block font-semibold text-gray-700">House / Flat No *</Label>
+                <Input
+                  value={checkoutData.houseNo}
+                  onChange={(e) => setCheckoutData({ ...checkoutData, houseNo: e.target.value })}
+                  placeholder="E.g., A-101"
+                  className="w-full text-lg"
+                />
+              </div>
+              <div>
+                <Label className="mb-2 block font-semibold text-gray-700">Street Name</Label>
+                <Input
+                  value={checkoutData.street}
+                  onChange={(e) => setCheckoutData({ ...checkoutData, street: e.target.value })}
+                  placeholder="E.g., M.G. Road"
+                  className="w-full text-lg"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="mb-2 block font-semibold text-gray-700">Area / Sector *</Label>
+                <Input
+                  value={checkoutData.area}
+                  onChange={(e) => setCheckoutData({ ...checkoutData, area: e.target.value })}
+                  placeholder="E.g., Sector 14"
+                  className="w-full text-lg"
+                />
+              </div>
+              <div>
+                <Label className="mb-2 block font-semibold text-gray-700">Landmark</Label>
+                <Input
+                  value={checkoutData.landmark}
+                  onChange={(e) => setCheckoutData({ ...checkoutData, landmark: e.target.value })}
+                  placeholder="E.g., Near City Mall"
+                  className="w-full text-lg"
+                />
+              </div>
             </div>
 
             <div className="border-t border-gray-200 pt-6">
@@ -455,7 +507,7 @@ export default function RestaurantMenu({ restaurant }: RestaurantMenuProps) {
                 </Button>
                 <Button
                   onClick={createOrder}
-                  disabled={!checkoutData.name || !checkoutData.phone || !checkoutData.address}
+                  disabled={!checkoutData.name || !checkoutData.phone || !checkoutData.locality || !checkoutData.houseNo || !checkoutData.area}
                   className="flex-1 h-12 text-lg font-semibold bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
                 >
                   Place Order

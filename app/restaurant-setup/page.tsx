@@ -18,12 +18,15 @@ import { db } from '@/lib/firebase';
 import { Restaurant, Food } from '@/lib/types';
 import { addSampleMenuItems } from '@/lib/sampleData';
 import { Building2, MapPin, Phone, Mail, Clock, DollarSign, Truck, Plus, Edit, Trash2, Utensils, Save, X, GripVertical, Tag } from 'lucide-react';
+import LocationPicker from '@/components/LocationPicker';
 
 export default function RestaurantSetup() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     address: '',
+    lat: 0,
+    lng: 0,
     phone: '',
     email: '',
     specialties: [] as string[],
@@ -187,6 +190,8 @@ export default function RestaurantSetup() {
         name: formData.name,
         description: formData.description,
         address: formData.address,
+        lat: formData.lat,
+        lng: formData.lng,
         phone: formData.phone,
         email: formData.email,
         ownerId: user.uid,
@@ -271,7 +276,8 @@ export default function RestaurantSetup() {
           fat: 0
         },
         price: 0,
-        imageUrl: ''
+        imageUrl: '',
+        description: ''
       });
       setIsAddingMenuItem(false);
       
@@ -1005,17 +1011,13 @@ export default function RestaurantSetup() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Address *</Label>
+                <Label htmlFor="address">Address & Locality *</Label>
                 <div className="relative">
-                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    className="pl-10"
-                    placeholder="Enter full address"
-                    required
+                  <LocationPicker 
+                    defaultAddress={formData.address}
+                    onLocationSelect={(loc) => {
+                      setFormData({ ...formData, address: loc.address, lat: loc.lat, lng: loc.lng });
+                    }}
                   />
                 </div>
               </div>

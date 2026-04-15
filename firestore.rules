@@ -37,11 +37,8 @@ service cloud.firestore {
     
     // Users collection rules
     match /users/{userId} {
-      // Allow users to read their own data
-      allow read: if isAuthenticated() && request.auth.uid == userId;
-      
-      // Allow admins to read all user data
-      allow read: if isAdmin();
+      // Allow authenticated users to read user data (needed for fetching names)
+      allow read: if isAuthenticated();
       
       // Allow users to create their own profile
       allow create: if isAuthenticated() && 
@@ -82,16 +79,8 @@ service cloud.firestore {
     
     // Restaurants collection rules
     match /restaurants/{restaurantId} {
-      // Allow owners to read their own restaurant doc by ID (even if not created yet)
-      allow read: if isAuthenticated() && restaurantId == request.auth.uid;
-      // Allow authenticated users to read active restaurants
-      allow read: if isAuthenticated() && resource.data.isActive == true;
-      
-      // Allow admins to read all restaurants
-      allow read: if isAdmin();
-      
-      // Allow restaurant owners to read their own restaurant based on ownerId field
-      allow read: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      // Allow all authenticated users to read restaurants (needed for related data fetching)
+      allow read: if isAuthenticated();
       
       // Allow restaurant owners to create their own restaurant
       allow create: if isAuthenticated() && 
@@ -110,13 +99,8 @@ service cloud.firestore {
     
     // Foods collection rules
     match /foods/{foodId} {
-      // Allow authenticated users to read active food items
-      allow read: if isAuthenticated() && resource.data.isActive == true;
-      
-      // Allow restaurant owners to read their own food items
-      allow read: if isAuthenticated() && 
-                     resource.data.restaurantId != null &&
-                     get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid;
+      // Allow all authenticated users to read foods (needed for order menus)
+      allow read: if isAuthenticated();
       
       // Allow restaurant owners to create food items for their restaurant
       allow create: if isAuthenticated() && 
@@ -139,31 +123,25 @@ service cloud.firestore {
     
     // Consultations collection rules
     match /consultations/{consultationId} {
-      // Allow patients and doctors to read their own consultations
-      allow read: if isAuthenticated() && 
-                     (resource.data.patientId == request.auth.uid || 
-                      resource.data.doctorId == request.auth.uid);
+      allow read: if isAuthenticated() && (
+        resource.data.patientId == request.auth.uid || 
+        resource.data.doctorId == request.auth.uid || 
+        isAdmin()
+      );
       
-      // Allow admins to read all consultations
-      allow read: if isAdmin();
+      allow create: if isAuthenticated() && (
+        request.resource.data.patientId == request.auth.uid || 
+        request.resource.data.doctorId == request.auth.uid || 
+        isAdmin()
+      );
       
-      // Allow patients to create consultations (book appointments)
-      allow create: if isPatient() && 
-                       request.resource.data.patientId == request.auth.uid;
-      
-      // Allow doctors to create consultations
-      allow create: if isDoctor();
-      
-      // Allow doctors to update their own consultations
-      allow update: if isDoctor() && 
-                       resource.data.doctorId == request.auth.uid;
-      
-      // Allow patients to update their own consultations (for booking)
-      allow update: if isPatient() && 
-                       resource.data.patientId == request.auth.uid;
-      
-      // Allow admins to update and delete consultations
-      allow update, delete: if isAdmin();
+      allow update: if isAuthenticated() && (
+        resource.data.patientId == request.auth.uid || 
+        resource.data.doctorId == request.auth.uid || 
+        isAdmin()
+      );
+
+      allow delete: if isAdmin();
     }
     
 
@@ -295,14 +273,8 @@ service cloud.firestore {
 
     // Doctor profiles collection rules
     match /doctorProfiles/{doctorId} {
-      // Allow doctors to read their own profile
-      allow read: if isAuthenticated() && doctorId == request.auth.uid;
-      
-      // Allow patients to read verified doctor profiles
-      allow read: if isAuthenticated() && resource.data.isVerified == true;
-      
-      // Allow admins to read all doctor profiles
-      allow read: if isAdmin();
+      // Allow all authenticated users to read doctor profiles (needed for consultation booking)
+      allow read: if isAuthenticated();
       
       // Allow doctors to create their own profile
       allow create: if isDoctor() && doctorId == request.auth.uid;
@@ -343,52 +315,24 @@ service cloud.firestore {
 
     // Orders collection rules
     match /orders/{orderId} {
-      // Allow patients to create orders
-      allow create: if isAuthenticated() && 
-                       request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.restaurantId != null &&
-                       request.resource.data.items != null &&
-                       request.resource.data.total != null;
-      
-      // Allow users to read their own orders
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      
-      // Allow restaurant owners to read orders for their restaurant
-      allow read: if isAuthenticated() && 
-                     resource.data.restaurantId != null &&
-                     get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid;
-      
-      // Allow admins to read all orders
-      allow read: if isAdmin();
-      
-      // Allow restaurant owners to update order status and related fields
-      allow update: if isAuthenticated() && 
-                       resource.data.restaurantId != null &&
-                       get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid &&
-                       // Ensure core data doesn't change
-                       request.resource.data.userId == resource.data.userId &&
-                       request.resource.data.restaurantId == resource.data.restaurantId &&
-                       request.resource.data.items == resource.data.items &&
-                       request.resource.data.total == resource.data.total &&
-                       request.resource.data.createdAt == resource.data.createdAt &&
-                       // Validate status is one of the allowed values
-                       request.resource.data.status in ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'] &&
-                       // Allow additional fields like updatedAt, contactName, contactPhone
-                       request.resource.data.keys().hasAll(['id', 'userId', 'restaurantId', 'items', 'total', 'status', 'deliveryInfo', 'createdAt']);
-      
-      // Allow patients to update their own orders (for cancellation)
-      allow update: if isAuthenticated() && 
-                       resource.data.userId == request.auth.uid &&
-                       // Only allow status updates to 'cancelled' for patients
-                       request.resource.data.status == 'cancelled' &&
-                       // Ensure other fields don't change
-                       request.resource.data.restaurantId == resource.data.restaurantId &&
-                       request.resource.data.items == resource.data.items &&
-                       request.resource.data.total == resource.data.total &&
-                       request.resource.data.createdAt == resource.data.createdAt;
-      
-      // Allow admins to update and delete all orders
-      allow update, delete: if isAdmin();
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        isAdmin() || 
+        (resource.data.restaurantId != null && get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid)
+      );
+
+      allow create: if isAuthenticated() && (
+        request.resource.data.userId == request.auth.uid || 
+        isAdmin()
+      );
+
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        isAdmin() || 
+        (resource.data.restaurantId != null && get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid)
+      );
+
+      allow delete: if isAdmin();
     }
 
 
