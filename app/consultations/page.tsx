@@ -14,7 +14,7 @@ import Link from 'next/link';
 import AuthGuard from '@/components/AuthGuard';
 import { useAuth } from '@/hooks/useAuth';
 import { Calendar, Clock, Video, User, Star, Phone, FileText, CheckCircle, XCircle, Search, Filter } from 'lucide-react';
-import { getAllDoctors, getAllDoctorProfiles, createConsultation, getConsultationsByUser, getConsultationsByDoctor } from '@/lib/firestore';
+import { getAllDoctors, getAllDoctorProfiles, createConsultation, getConsultationsByUser, getConsultationsByDoctor, updateDocument } from '@/lib/firestore';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { User as UserType, Consultation } from '@/lib/types';
@@ -181,7 +181,8 @@ export default function Consultations() {
         prescription: '',
         prescriptionLink: '',
         patientName: profile.name || 'Patient',
-        patientEmail: profile.email || 'No email provided'
+        patientEmail: profile.email || 'No email provided',
+        videoLink: bookingData.type === 'video' ? `https://meet.jit.si/Diabeto-${Date.now()}-${Math.random().toString(36).substring(7)}` : undefined
       };
 
       await createConsultation(consultationData);
@@ -227,7 +228,7 @@ export default function Consultations() {
     }
   };
 
-  const handleConsultationUpdate = (id: string, field: string, value: string) => {
+  const handleConsultationUpdate = async (id: string, field: string, value: string) => {
     setDoctorConsultations(prev =>
       prev.map(consultation =>
         consultation.id === id
@@ -235,9 +236,14 @@ export default function Consultations() {
           : consultation
       )
     );
+    try {
+      await updateDocument('consultations', id, { [field]: value });
+    } catch (error) {
+      console.error('Error updating consultation:', error);
+    }
   };
 
-  const handleStatusChange = (id: string, status: Consultation['status']) => {
+  const handleStatusChange = async (id: string, status: Consultation['status']) => {
     setDoctorConsultations(prev =>
       prev.map(consultation =>
         consultation.id === id
@@ -245,6 +251,11 @@ export default function Consultations() {
           : consultation
       )
     );
+    try {
+      await updateDocument('consultations', id, { status });
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
   };
 
   const generateGoogleCalendarLink = (title: string, date: Date) => {
@@ -303,6 +314,17 @@ export default function Consultations() {
                               </Badge>
                               {consultation.status === 'pending' && (
                                 <div className="flex gap-2">
+                                  {consultation.videoLink && (
+                                    <Button
+                                      size="sm"
+                                      variant="default"
+                                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                                      onClick={() => window.open(consultation.videoLink, '_blank')}
+                                    >
+                                      <Video className="h-4 w-4 mr-1" />
+                                      Join Call
+                                    </Button>
+                                  )}
                                   <Button
                                     size="sm"
                                     onClick={() => handleStatusChange(consultation.id, 'completed')}
@@ -657,9 +679,15 @@ export default function Consultations() {
                                 <Button size="sm" variant="outline">
                                   Reschedule
                                 </Button>
-                                <Button size="sm">
-                                  Join Call
-                                </Button>
+                                {consultation.videoLink && (
+                                  <Button 
+                                    size="sm"
+                                    onClick={() => window.open(consultation.videoLink, '_blank')}
+                                  >
+                                    <Video className="h-4 w-4 mr-1" />
+                                    Join Call
+                                  </Button>
+                                )}
                                 <Button 
                                   size="sm" 
                                   variant="secondary"

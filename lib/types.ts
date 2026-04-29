@@ -42,6 +42,7 @@ export interface Consultation {
   time?: string;
   notes?: string;
   prescription?: string;
+  videoLink?: string;
   createdAt: Timestamp;
 }
 
