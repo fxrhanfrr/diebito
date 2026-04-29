@@ -149,6 +149,15 @@ export default function Consultations() {
     try {
       setLoading(true);
 
+      if (bookingData.time) {
+        const [hours, minutes] = bookingData.time.split(':');
+        if (minutes !== '00' && minutes !== '30') {
+          alert('Appointments can only be scheduled in 30-minute intervals (e.g. :00 or :30).');
+          setLoading(false);
+          return;
+        }
+      }
+
       const targetTime = Timestamp.fromDate(new Date(`${bookingData.date}T${bookingData.time}`));
 
       // Prevent overlapping bookings
@@ -576,12 +585,26 @@ export default function Consultations() {
 
                       <div>
                         <Label htmlFor="time">Time</Label>
-                        <Input
-                          id="time"
-                          type="time"
+                        <Select
                           value={bookingData.time}
-                          onChange={(e) => setBookingData(prev => ({ ...prev, time: e.target.value }))}
-                        />
+                          onValueChange={(value) => setBookingData(prev => ({ ...prev, time: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a time slot" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {Array.from({ length: 28 }).map((_, i) => {
+                              const hour = Math.floor(i / 2) + 8; // 8:00 to 21:30
+                              const minutes = i % 2 === 0 ? '00' : '30';
+                              const timeString = `${hour.toString().padStart(2, '0')}:${minutes}`;
+                              return (
+                                <SelectItem key={timeString} value={timeString}>
+                                  {timeString}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <div>
