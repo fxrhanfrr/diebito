@@ -28,6 +28,7 @@ import {
   Clock,
   Package,
   User,
+  Navigation,
 } from 'lucide-react';
 import RestaurantMenu from '@/components/RestaurantMenu';
 import LocationPicker from '@/components/LocationPicker';
@@ -169,22 +170,36 @@ export default function FoodOrdering() {
     fetchRestaurants();
   }, []);
 
-  const filteredRestaurants = restaurants.filter((restaurant) => {
-    const matchesSearch =
-      restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      restaurant.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      restaurant.specialties.some((specialty) =>
-        specialty.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  const filteredAndSortedRestaurants = restaurants
+    .filter((restaurant) => {
+      const matchesSearch =
+        restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        restaurant.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        restaurant.specialties.some((specialty) =>
+          specialty.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+      let isWithinRange = true;
+      if (userLocation && restaurant.lat && restaurant.lng) {
+        const distance = calculateDistance(userLocation.lat, userLocation.lng, restaurant.lat, restaurant.lng);
+        isWithinRange = distance <= restaurant.deliveryRadius;
+      }
       
-    let isWithinRange = true;
-    if (userLocation && restaurant.lat && restaurant.lng) {
-      const distance = calculateDistance(userLocation.lat, userLocation.lng, restaurant.lat, restaurant.lng);
-      isWithinRange = distance <= restaurant.deliveryRadius;
-    }
-      
-    return matchesSearch && isWithinRange;
-  });
+      return matchesSearch && isWithinRange;
+    })
+    .map((restaurant) => {
+      let distance = null;
+      if (userLocation && restaurant.lat && restaurant.lng) {
+        distance = calculateDistance(userLocation.lat, userLocation.lng, restaurant.lat, restaurant.lng);
+      }
+      return { ...restaurant, distance };
+    })
+    .sort((a, b) => {
+      if (a.distance !== null && b.distance !== null) {
+        return a.distance - b.distance;
+      }
+      return 0;
+    });
 
   // Load orders for restaurant owners
   useEffect(() => {
@@ -471,7 +486,7 @@ export default function FoodOrdering() {
             <div>
               <h2 className="text-2xl font-bold mb-6">Available Restaurants</h2>
               <div className="flex flex-col gap-6">
-                {filteredRestaurants.map((restaurant) => (
+                {filteredAndSortedRestaurants.map((restaurant) => (
                   <Card key={restaurant.id} className="card-hover flex flex-col h-full">
                     <CardHeader className="p-5 pb-3">
                       <CardTitle className="text-lg leading-snug mb-1">{restaurant.name}</CardTitle>
@@ -494,6 +509,14 @@ export default function FoodOrdering() {
                             delivery
                           </span>
                         </div>
+                        {restaurant.distance !== null && (
+                          <div className="flex items-center gap-2 text-sm text-blue-600 font-medium">
+                            <Navigation className="h-4 w-4 flex-shrink-0" />
+                            <span>
+                              {restaurant.distance.toFixed(1)} km away
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex flex-wrap gap-1.5 mt-3 min-h-[28px]">
                         {restaurant.specialties.slice(0, 3).map((specialty) => (
